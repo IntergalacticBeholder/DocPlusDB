@@ -27,8 +27,6 @@ class Window(QMainWindow):
         self.btn_search.clicked.connect(self.start_search)
         self.table = QtWidgets.QTableWidget(self.centralwidget)
         self.table.setGeometry(20, 70, 860, 520)
-        self.table.setHorizontalHeaderLabels(
-            ['id', 'Адрес', 'Кабинет', 'Оборудование', 'Наименование', 'С/Н', 'Год выпуска'])
         self.table.setSortingEnabled(False)
         self.table.sortByColumn(2, QtCore.Qt.AscendingOrder)
         self.search = QtWidgets.QLineEdit(self.centralwidget)
@@ -367,7 +365,9 @@ class Window(QMainWindow):
                     for i in range(b):
                         item = QtWidgets.QTableWidgetItem(str(data[j][i]))
                         self.table.setItem(j, i, item)
-                        self.table.resizeColumnsToContents()
+                        self.table.setHorizontalHeaderLabels(
+            ['id', 'Адрес', 'Кабинет', 'Оборудование', 'Наименование', 'С/Н', 'Год выпуска'])
+                self.table.resizeColumnsToContents()
                 self.table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
 
         except Exception as e:
