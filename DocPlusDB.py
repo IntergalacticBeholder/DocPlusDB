@@ -9,14 +9,10 @@ class Window(QMainWindow):
     def __init__(self):
         super(Window, self).__init__()
         self.resize(900, 800)
-        #_translate = QtCore.QCoreApplication.translate
         self.centralwidget = QtWidgets.QWidget(self)
         self.setCentralWidget(self.centralwidget)
-        # self.btn_read = QtWidgets.QPushButton(self)
-        # self.btn_read.setGeometry(QtCore.QRect(570, 40, 100, 20))
-        # self.btn_read.setObjectName("pushButton")
-        # self.btn_read.setText(_translate("MainWindow", "Выбрать все"))
-        # self.btn_read.clicked.connect(self.start_read)
+        self.setWindowTitle('DocPlusDB')
+        self.setWindowIcon(QtGui.QIcon('logo.png'))
         self.btn_clear = QtWidgets.QPushButton(self.centralwidget)
         self.btn_clear.setGeometry(QtCore.QRect(780, 40, 100, 20))
         self.btn_clear.setText("Очистить")
@@ -87,8 +83,6 @@ class Window(QMainWindow):
         self.btn_add_clear.clicked.connect(self.start_clear)
         self.add_groupe.setEnabled(True)
         self.add_groupe.setCheckable(True)
-        #self.add_groupe.setChecked(False)
-        #print(self.add_groupe.isEnabled())
         self.add_all()
 
     #"""Настройка добавления оборудования"""
@@ -207,12 +201,12 @@ class Window(QMainWindow):
                     self.search_for_what2.clear()
                     cur.execute("SELECT street FROM streets")
                     x = cur.fetchall()
-                    print(x)
+                    #print(x)
                     x = ','.join(map(str, x))
-                    print(x)
+                    #print(x)
                     for r in (('(', ''), (',)', ''), ("'", '')):
                         x = x.replace(*r)
-                    print(x.split(','))
+                    #print(x.split(','))
                     self.search_for_what2.addItems(x.split(','))
                     #self.sfw3()
 
@@ -275,12 +269,12 @@ class Window(QMainWindow):
                             f"INNER JOIN streets ON street_id = streets.id "
                             f"WHERE streets.street = '{str(self.search_for_what2.currentText())}'")
                 x = cur.fetchall()
-                print(x)
+                #print(x)
                 x = ','.join(map(str, x))
-                print(x)
+                #print(x)
                 for r in (('(', ''), (',)', ''), ("'", '')):
                     x = x.replace(*r)
-                print(x.split(','))
+                #print(x.split(','))
                 self.search_for_what3.addItems(x.split(','))
         except Exception as e:
             error = QMessageBox()
@@ -365,8 +359,8 @@ class Window(QMainWindow):
                     for i in range(b):
                         item = QtWidgets.QTableWidgetItem(str(data[j][i]))
                         self.table.setItem(j, i, item)
-                        self.table.setHorizontalHeaderLabels(
-            ['id', 'Адрес', 'Кабинет', 'Оборудование', 'Наименование', 'С/Н', 'Год выпуска'])
+                self.table.setHorizontalHeaderLabels(
+                        ['id', 'Адрес', 'Кабинет', 'Оборудование', 'Наименование', 'С/Н', 'Год выпуска'])
                 self.table.resizeColumnsToContents()
                 self.table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
 
@@ -490,51 +484,6 @@ class Window(QMainWindow):
             if con:
                 con.close()
 
-
-    # def start_read(self):
-    #     try:
-    #         con = psycopg2.connect(
-    #             host=host,
-    #             user=user,
-    #             password=password,
-    #             database=db_name
-    #         )
-    #         with con.cursor() as cur:
-    #             """Вызываем запрос через execute"""
-    #             cur.execute("SELECT version();")
-    #             """Медод fetchone возвращает запрос"""
-    #             print(f"Server version: {cur.fetchone()}")
-    #         with con.cursor() as cur:
-    #             #if not self.reading:
-    #             cur.execute("SELECT equipments.id, streets.street, address.room, type.type, name.name, name.sn, name.date FROM equipments INNER JOIN address ON address.id = equipments.address_id INNER JOIN type ON type.id = equipments.type_id INNER JOIN name ON name.id = equipments.name_id INNER JOIN streets ON street_id = streets.id;")
-    #             data = cur.fetchall()
-    #             a = len(data)  # rows
-    #             b = len(data[0])  # columns
-    #             print(data, data[0])
-    #             self.table.setColumnCount(b)
-    #             self.table.setRowCount(a)
-    #             self.table.setHorizontalHeaderLabels(['id', 'Адрес', 'Кабинет', 'Оборудование', 'Наименование', 'С/Н', 'Год выпуска'])
-    #             for j in range(a):
-    #                 for i in range(b):
-    #                     item = QtWidgets.QTableWidgetItem(str(data[j][i]))
-    #                     self.table.setItem(j, i, item)
-    #                     self.table.resizeColumnsToContents()
-    #             self.table.setSortingEnabled(True)
-    #             self.table.sortItems(0, QtCore.Qt.AscendingOrder)
-    #
-    #
-    #     except Exception as e:
-    #         error = QMessageBox()
-    #         error.setWindowTitle("Ошибка")
-    #         error.setText("Что-то пошло не так")
-    #         error.setIcon(QMessageBox.Warning)
-    #         error.setStandardButtons(QMessageBox.Ok)
-    #         error.setDetailedText(f'Error {e}')
-    #         print(f'Error {e}')
-    #         error.exec_()
-    #     finally:
-    #         if con:
-    #             con.close()
 if __name__ == "__main__":
     import sys
     app = QApplication(sys.argv)
