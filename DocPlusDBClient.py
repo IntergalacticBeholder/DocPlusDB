@@ -1,7 +1,7 @@
 import psycopg2
-import sys
+import xlwt
 from PyQt5 import QtCore, QtGui, QtWidgets
-from PyQt5.QtWidgets import QApplication, QMainWindow, QMessageBox, QCompleter, QAbstractItemView
+from PyQt5.QtWidgets import QApplication, QMainWindow, QMessageBox, QCompleter, QFileDialog
 from config import *
 
 class Window(QMainWindow):
@@ -9,39 +9,43 @@ class Window(QMainWindow):
     def __init__(self):
         super(Window, self).__init__()
         self.resize(900, 800)
-        #_translate = QtCore.QCoreApplication.translate
         self.centralwidget = QtWidgets.QWidget(self)
         self.setCentralWidget(self.centralwidget)
-        self.setWindowTitle('DocPlusDBClient')
+        self.setWindowTitle('DocPlusDB')
         self.setWindowIcon(QtGui.QIcon('logo.png'))
-        self.btn_clear = QtWidgets.QPushButton(self.centralwidget)
-        self.btn_clear.setGeometry(QtCore.QRect(780, 40, 100, 20))
+        self.search_groupe = QtWidgets.QGroupBox('Поиск', self.centralwidget)
+        self.search_groupe.setGeometry(10, 10, 880, 610)
+        self.btn_clear = QtWidgets.QPushButton(self.search_groupe)
+        self.btn_clear.setGeometry(QtCore.QRect(770, 575, 100, 20))
         self.btn_clear.setText("Очистить")
         self.btn_clear.clicked.connect(self.start_clear)
-        self.btn_search = QtWidgets.QPushButton(self.centralwidget)
-        self.btn_search.setGeometry(QtCore.QRect(670, 40, 100, 20))
+        self.btn_search = QtWidgets.QPushButton(self.search_groupe)
+        self.btn_search.setGeometry(QtCore.QRect(770, 15, 100, 20))
         self.btn_search.setText("Поиск")
+        self.btn_save = QtWidgets.QPushButton(self.search_groupe)
+        self.btn_save.setGeometry(QtCore.QRect(10, 575, 100, 20))
+        self.btn_save.setText("Сохранить")
+        self.btn_save.setEnabled(False)
+        self.btn_save.clicked.connect(self.save_table)
         self.btn_search.clicked.connect(self.start_search)
-        self.table = QtWidgets.QTableWidget(self.centralwidget)
-        self.table.setGeometry(20, 70, 860, 520)
-        self.table.setSortingEnabled(False)
+        self.table = QtWidgets.QTableWidget(self.search_groupe)
+        self.table.setGeometry(10, 45, 860, 520)
         self.table.sortByColumn(2, QtCore.Qt.AscendingOrder)
-        self.search = QtWidgets.QLineEdit(self.centralwidget)
-        self.search.setGeometry(410, 40, 250, 20)
-        self.search_for_what = QtWidgets.QComboBox(self.centralwidget)
-        self.search_for_what.setGeometry(20, 40, 130, 20)
+        self.search = QtWidgets.QLineEdit(self.search_groupe)
+        self.search.setGeometry(500, 15, 250, 20)
+        self.search_for_what = QtWidgets.QComboBox(self.search_groupe)
+        self.search_for_what.setGeometry(10, 15, 130, 20)
         self.search_for_what.addItems(['Всё', 'По Адресу', 'По Оборудованию', 'По Имени'])
-        self.search_for_what2 = QtWidgets.QComboBox(self.centralwidget)
-        self.search_for_what2.setGeometry(160, 40, 180, 20)
+        self.search_for_what2 = QtWidgets.QComboBox(self.search_groupe)
+        self.search_for_what2.setGeometry(150, 15, 250, 20)
         self.search_for_what.currentTextChanged.connect(self.sfw2)
         self.search_for_what2.currentTextChanged.connect(self.sfw3)
-        self.search_for_what3 = QtWidgets.QComboBox(self.centralwidget)
-        self.search_for_what3.setGeometry(350, 40, 50, 20)
-
+        self.search_for_what3 = QtWidgets.QComboBox(self.search_groupe)
+        self.search_for_what3.setGeometry(410, 15, 80, 20)
 
         #Добавление
         self.add_groupe = QtWidgets.QGroupBox('Добавление', self.centralwidget)
-        self.add_groupe.setGeometry(10, 600, 880, 190)
+        self.add_groupe.setGeometry(10, 630, 880, 160)
         self.add_lable_address = QtWidgets.QLabel(self.add_groupe)
         self.add_lable_address.setGeometry(10, 10, 200, 20)
         self.add_lable_address.setText('Адрес:')
@@ -191,6 +195,7 @@ class Window(QMainWindow):
                 #"""Поиск без фильтров"""
                 if self.search_for_what.currentText() == 'Всё':
                     self.search.setEnabled(False)
+                    self.search_for_what2.setEnabled(False)
                     self.search_for_what3.setEnabled(False)
                     self.search_for_what2.clear()
 
@@ -198,6 +203,7 @@ class Window(QMainWindow):
 
                 elif self.search_for_what.currentText() == 'По Адресу':
                     self.search.setEnabled(False)
+                    self.search_for_what2.setEnabled(True)
                     self.search_for_what3.setEnabled(True)
                     self.search_for_what2.clear()
                     cur.execute("SELECT street FROM streets")
@@ -214,6 +220,7 @@ class Window(QMainWindow):
                 #"""Поиск по типу"""
                 elif self.search_for_what.currentText() == 'По Оборудованию':
                     self.search.setEnabled(False)
+                    self.search_for_what2.setEnabled(True)
                     self.search_for_what3.setEnabled(False)
                     self.search_for_what2.clear()
                     cur.execute("SELECT type FROM types")
@@ -228,6 +235,7 @@ class Window(QMainWindow):
                 #"""Поиск по имени"""
                 elif self.search_for_what.currentText() == 'По Имени':
                     self.search.setEnabled(True)
+                    self.search_for_what2.setEnabled(False)
                     self.search_for_what3.setEnabled(False)
                     cur.execute("SELECT DISTINCT name FROM names")
                     x = cur.fetchall()
@@ -308,7 +316,7 @@ class Window(QMainWindow):
                 #"""Кнопка поиска без фильтров"""
                 if self.search_for_what.currentText() == 'Всё':
                     cur.execute(
-                        "SELECT streets.street, address.room, types.type, names.name, names.sn, names.date "
+                        "SELECT equipments.id, streets.street, address.room, types.type, names.name, names.sn, names.date "
                         "FROM equipments "
                         "INNER JOIN address ON address.id = equipments.address_id "
                         "INNER JOIN types ON types.id = equipments.type_id "
@@ -319,7 +327,7 @@ class Window(QMainWindow):
                 elif self.search_for_what.currentText() == 'По Адресу':
                     self.table.clearContents()
                     cur.execute(
-                        f"SELECT streets.street, address.room, types.type, names.name, names.sn, names.date "
+                        f"SELECT equipments.id, streets.street, address.room, types.type, names.name, names.sn, names.date "
                         f"FROM equipments "
                         f"INNER JOIN address ON address.id = equipments.address_id "
                         f"INNER JOIN types ON types.id = equipments.type_id "
@@ -331,7 +339,7 @@ class Window(QMainWindow):
                 elif self.search_for_what.currentText() == 'По Оборудованию':
                     self.table.clearContents()
                     cur.execute(
-                        f"SELECT streets.street, address.room, types.type, names.name, names.sn, names.date "
+                        f"SELECT equipments.id, streets.street, address.room, types.type, names.name, names.sn, names.date "
                         f"FROM equipments "
                         f"INNER JOIN address ON address.id = equipments.address_id "
                         f"INNER JOIN types ON types.id = equipments.type_id "
@@ -342,28 +350,35 @@ class Window(QMainWindow):
                 #"""Кнопка поиска по имени"""
                 elif self.search_for_what.currentText() == 'По Имени':
                     cur.execute(
-                        f"SELECT streets.street, address.room, types.type, names.name, names.sn, names.date "
+                        f"SELECT equipments.id, streets.street, address.room, types.type, names.name, names.sn, names.date "
                         f"FROM equipments "
                         f"INNER JOIN address ON address.id = equipments.address_id "
                         f"INNER JOIN types ON types.id = equipments.type_id "
                         f"INNER JOIN names ON names.id = equipments.name_id "
                         f"INNER JOIN streets ON street_id = streets.id "
-                        f"WHERE to_tsvector(name) @@ to_tsquery('{str(self.search.text())}')"
+                        f"WHERE to_tsvector(name) @@ plainto_tsquery('{str(self.search.text())}')"
                     )
                 data = cur.fetchall()
+
+                print(data)
                 a = len(data)  # rows
                 b = len(data[0])  # columns
                 #print(data, data[0])
                 self.table.setColumnCount(b)
                 self.table.setRowCount(a)
+                self.table.setSortingEnabled(False)
                 for j in range(a):
                     for i in range(b):
                         item = QtWidgets.QTableWidgetItem(str(data[j][i]))
                         self.table.setItem(j, i, item)
                 self.table.setHorizontalHeaderLabels(
-                        ['Адрес', 'Кабинет', 'Оборудование', 'Наименование', 'С/Н', 'Год выпуска'])
+                        ['id', 'Адрес', 'Кабинет', 'Оборудование', 'Наименование', 'С/Н', 'Год выпуска'])
+                self.table.setSortingEnabled(True)
+                self.table.sortByColumn(2, QtCore.Qt.AscendingOrder)
+
                 self.table.resizeColumnsToContents()
                 self.table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
+                self.btn_save.setEnabled(True)
 
         except Exception as e:
             error = QMessageBox()
@@ -484,6 +499,48 @@ class Window(QMainWindow):
         finally:
             if con:
                 con.close()
+
+    #"""Кнопка сохранения"""
+    def save_table(self):
+        rows = self.table.rowCount()
+        cols = self.table.columnCount()
+        heads = ['id', 'Адрес', 'Кабинет', 'Оборудование', 'Наименование', 'С/Н', 'Год выпуска']
+        if not rows:
+            error = QMessageBox.information(self, 'Внимание!', 'Нечего сохранять.')
+            return
+
+        name, _ = QFileDialog.getSaveFileName(self, 'Сохранить', '.', 'Excel(*.xls)')
+        if not name:
+            error = QMessageBox.information(self, 'Внимание!', 'Укажите имя файла')
+            return
+        wb = xlwt.Workbook()
+        ws = wb.add_sheet('Список оборудования')
+        for colx in range(cols):
+            width = 3000 + colx * 500
+            ws.col(colx).width = width
+        data = []
+        for row in range(rows):
+            items = []
+            for col in range(cols):
+                    items.append(self.table.item(row, col).text())
+            data.append(items)
+        j = 0
+        for n in heads:
+            ws.write(0, j, n)
+            j += 1
+        i = 1
+        for n in data:
+            ws.write(i, 0, n[0])
+            ws.write(i, 1, n[1])
+            ws.write(i, 2, n[2])
+            ws.write(i, 3, n[3])
+            ws.write(i, 4, n[4])
+            ws.write(i, 5, n[5])
+            ws.write(i, 6, n[6])
+            i += 1
+        wb.save(name)
+
+
 if __name__ == "__main__":
     import sys
     app = QApplication(sys.argv)
