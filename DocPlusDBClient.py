@@ -41,16 +41,16 @@ class Main_Window(QMainWindow):
         self.search = QtWidgets.QLineEdit(self.search_groupe)
 
         self.search_for_what = QtWidgets.QComboBox(self.search_groupe)
-        self.search_for_what.setMinimumWidth(110)
+        self.search_for_what.setMinimumWidth(130)
         self.search_for_what.addItems(['Всё', 'По Адресу', 'По Оборудованию', 'По Имени'])
         self.search_for_what.currentTextChanged.connect(self.sfw2)
 
         self.search_for_what2 = QtWidgets.QComboBox(self.search_groupe)
-        self.search_for_what2.setMinimumWidth(110)
+        self.search_for_what2.setMinimumWidth(250)
         self.search_for_what2.currentTextChanged.connect(self.sfw3)
 
         self.search_for_what3 = QtWidgets.QComboBox(self.search_groupe)
-        self.search_for_what3.setMaximumWidth(50)
+        self.search_for_what3.setMaximumWidth(60)
 
         self.layout = QGridLayout(self.centralwidget)
         self.layout.addWidget(self.search_groupe, 0, 0)
