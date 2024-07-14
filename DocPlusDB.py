@@ -636,7 +636,7 @@ class Equipment_Window(QtWidgets.QWidget):
             )
             with con.cursor() as cur:
 
-                #"""Кнопка поиска без фильтров"""
+                #"""Выдача инфы"""
                 cur.execute(
                     "SELECT streets.street "
                     "FROM equipments "
@@ -684,7 +684,7 @@ class Equipment_Window(QtWidgets.QWidget):
                 cur.execute(
                     "SELECT names.name "
                     "FROM equipments "
-                    "INNER JOIN names ON names.id = equipments.type_id "
+                    "INNER JOIN names ON names.id = equipments.name_id "
                     f"WHERE equipments.id = '{str(index)}'"
                 )
                 name = cur.fetchall()
@@ -698,7 +698,7 @@ class Equipment_Window(QtWidgets.QWidget):
                 cur.execute(
                     "SELECT names.sn "
                     "FROM equipments "
-                    "INNER JOIN names ON names.id = equipments.type_id "
+                    "INNER JOIN names ON names.id = equipments.name_id "
                     f"WHERE equipments.id = '{str(index)}'"
                 )
                 sn = cur.fetchall()
@@ -712,15 +712,14 @@ class Equipment_Window(QtWidgets.QWidget):
                 cur.execute(
                     "SELECT names.date "
                     "FROM equipments "
-                    "INNER JOIN names ON names.id = equipments.type_id "
+                    "INNER JOIN names ON names.id = equipments.name_id "
                     f"WHERE equipments.id = '{str(index)}'"
                 )
                 date = cur.fetchall()
-                #print(date)
                 date = ','.join(map(str, date))
                 for r in (("(Decimal('", ''), ("'),)", '')):
                     date = str(date.replace(*r))
-                print(date)
+                #print(date)
                 self.lable_date.setText(f"Год выпуска: {str(date)}")
                 self.layout.addWidget(self.lable_date, 2, 1)
 
