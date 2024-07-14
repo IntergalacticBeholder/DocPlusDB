@@ -5,14 +5,16 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtWidgets import *
 from config import *
 
+
 class Main_Window(QMainWindow):
     def __init__(self):
         super(Main_Window, self).__init__()
-        self.resize(900, 800)
+        self.resize(1000, 750)
         self.centralwidget = QtWidgets.QWidget(self)
         self.setCentralWidget(self.centralwidget)
         self.setWindowTitle('DocPlusDB')
         self.setWindowIcon(QtGui.QIcon('logo.png'))
+        self.centralwidget.setFont(QtGui.QFont("Times", 10))
         self.search_groupe = QtWidgets.QGroupBox('Поиск', self.centralwidget)
 
         self.btn_clear = QtWidgets.QPushButton(self.search_groupe)
@@ -32,9 +34,9 @@ class Main_Window(QMainWindow):
         self.btn_search.clicked.connect(self.start_search)
 
         self.table = QtWidgets.QTableWidget(self.search_groupe)
-        self.table.setMinimumHeight(50)
+        self.table.setMinimumHeight(150)
         self.table.sortByColumn(2, QtCore.Qt.AscendingOrder)
-        self.table.itemDoubleClicked.connect(self.equpment_show)
+        self.table.itemDoubleClicked.connect(self.equipment_show)
 
         self.search = QtWidgets.QLineEdit(self.search_groupe)
 
@@ -88,7 +90,7 @@ class Main_Window(QMainWindow):
         self.add_CB_type.currentTextChanged.connect(self.sfw2)
 
         self.add_lable_name = QtWidgets.QLabel(self.add_groupe)
-        self.add_lable_name.setText('Наименования:')
+        self.add_lable_name.setText('Наименование:')
 
         self.add_name = QtWidgets.QLineEdit(self.add_groupe)
         self.add_name.setFixedWidth(300)
@@ -134,7 +136,9 @@ class Main_Window(QMainWindow):
         self.layout_add.addWidget(self.add_date, 5, 1, alignment = QtCore.Qt.AlignLeft)
         self.layout_add.addWidget(self.btn_add, 1, 200, alignment = QtCore.Qt.AlignRight)
         self.layout_add.addWidget(self.btn_add_clear, 5, 200, alignment = QtCore.Qt.AlignRight)
+
         self.add_all()
+
     #"""Настройка добавления оборудования"""
 
     def add_all(self):
@@ -547,17 +551,12 @@ class Main_Window(QMainWindow):
         self.add_name.clear()
         self.add_sn.clear()
         self.add_date.clear()
-        print(self.index)
 
     #"""Кнопка сохранения"""
     def save_table(self):
         rows = self.table.rowCount()
         cols = self.table.columnCount()
         heads = ['id', 'Адрес', 'Кабинет', 'Оборудование', 'Наименование', 'С/Н', 'Год выпуска']
-        if not rows:
-            error = QMessageBox.information(self, 'Внимание!', 'Нечего сохранять.')
-            return
-
         name, _ = QFileDialog.getSaveFileName(self, 'Сохранить', '.', 'Excel(*.xls)')
         if not name:
             error = QMessageBox.information(self, 'Внимание!', 'Укажите имя файла')
@@ -589,73 +588,159 @@ class Main_Window(QMainWindow):
             i += 1
         wb.save(name)
 
-    def equpment_show(self):
-        equipment_window.show()
+    #"""Показать Данные оборудовани"""
+    def equipment_show(self):
+
         row = self.table.currentIndex().row()
-        col = self.table.currentIndex().column()
-        self.index = self.table.model().index(row, 0).data()
-        print(self.index)
-        #return self.index
+        global index
+        index = self.table.model().index(row, 0).data()
+        print(index)
+        self.equipment_window = Equipment_Window()
+        self.equipment_window.show()
 
-
-        # rows = sorted(set(index.row() for index in
-        #                   self.table.selectedIndexes()))
-        # for row in rows:
-        #     ids = row+1
-        #
-        # self.ids = ids
-        # print(self.ids)
-
-    # def id_show(self):
-    #     rows = sorted(set(index.row() for index in
-    #                       self.table.selectedIndexes()))
-    #     for row in rows:
-    #         ids = row+1
-    #
-    #     self.ids = ids
-    #     print(self.ids)
-    #     #return self.ids
-
-    # def __abc(self):
-    #     if 1 == 1:
-    #         return 'text'
-    #     else:
-    #         pass
 
 
 class Equipment_Window(QtWidgets.QWidget):
-    def __init__(self, Main_Window):
+    def __init__(self):
         super(Equipment_Window, self).__init__()
-        self.resize(780, 600)
+        self.resize(700, 450)
         self.centralwidget = QtWidgets.QWidget(self)
         self.setWindowTitle('Данные')
         self.setWindowIcon(QtGui.QIcon('logo.png'))
+        self.centralwidget.setFont(QtGui.QFont("Times", 10))
+        self.layout = QGridLayout(self.centralwidget)
+        self.lable_address = QtWidgets.QLabel(self.centralwidget)
+        self.lable_room = QtWidgets.QLabel(self.centralwidget)
+        self.lable_type = QtWidgets.QLabel(self.centralwidget)
+        self.lable_name = QtWidgets.QLabel(self.centralwidget)
+        self.lable_sn = QtWidgets.QLabel(self.centralwidget)
+        self.lable_date = QtWidgets.QLabel(self.centralwidget)
+        self.table = QtWidgets.QTableWidget(self.centralwidget)
 
-        # self.info_groupe = QtWidgets.QGroupBox('Поиск', self.centralwidget)
-        # self.info_groupe.setGeometry(10, 10, 880, 610)
-        self.btn_search = QtWidgets.QPushButton(self.centralwidget)
-        self.btn_search.setGeometry(QtCore.QRect(10, 15, 100, 20))
-        self.btn_search.clicked.connect(self.inform)
-        self.btn_search.setText("Поиск")
-        #self.table = QtWidgets.QTableWidget.selectRow
-        self.lable = QtWidgets.QLabel(self.centralwidget)
-        self.lable.setGeometry(20, 10, 200, 20)
- #       self.lable.setText(str(self.ids))
+        self.btn_change = QtWidgets.QPushButton(self.centralwidget)
+        self.btn_change.setText("Изменить")
+        self.btn_change.setEnabled(False)
+        self.btn_add = QtWidgets.QPushButton(self.centralwidget)
+        self.btn_add.setText("Добавить запись")
+        self.btn_add.setEnabled(False)
+        self.layout.addWidget(self.btn_change, 0, 3)
+        self.layout.addWidget(self.btn_add, 2, 3)
+        self.layout.addWidget(self.table, 3, 0, 3, 4)
+        self.table.setMinimumHeight(50)
+        try:
+            con = psycopg2.connect(
+                host=host,
+                user=user,
+                password=password,
+                database=db_name
+            )
+            with con.cursor() as cur:
 
+                #"""Кнопка поиска без фильтров"""
+                cur.execute(
+                    "SELECT streets.street "
+                    "FROM equipments "
+                    "INNER JOIN address ON address.id = equipments.address_id "
+                    "INNER JOIN streets ON street_id = streets.id "
+                    f"WHERE equipments.id = '{str(index)}'"
+                )
+                address = cur.fetchall()
+                address = ','.join(map(str, address))
+                for r in (('(', ''), (',)', ''), ("'", '')):
+                    address = str(address.replace(*r))
+                #print(address)
+                self.lable_address.setText(f"Адрес: {str(address)}")
+                self.layout.addWidget(self.lable_address, 0, 0)
 
+                cur.execute(
+                    "SELECT address.room "
+                    "FROM equipments "
+                    "INNER JOIN address ON address.id = equipments.address_id "
+                    f"WHERE equipments.id = '{str(index)}'"
+                )
+                room = cur.fetchall()
+                room = ','.join(map(str, room))
+                for r in (('(', ''), (',)', ''), ("'", '')):
+                    room = str(room.replace(*r))
+                #print(room)
 
-    def inform(self):
-        mwi = Main_Window()
-        mwi.start_add_clear()
-        #print(mwi)
-        #print(self.mwi.ids)
-        #print(self.mwi.ids)
+                self.lable_room.setText(f"Кабинет: {str(room)}")
+                self.layout.addWidget(self.lable_room, 1, 0)
+
+                cur.execute(
+                    "SELECT types.type "
+                    "FROM equipments "
+                    "INNER JOIN types ON types.id = equipments.type_id "
+                    f"WHERE equipments.id = '{str(index)}'"
+                )
+                type = cur.fetchall()
+                type = ','.join(map(str, type))
+                for r in (('(', ''), (',)', ''), ("'", '')):
+                    type = str(type.replace(*r))
+                #print(type)
+                self.lable_type.setText(f"Оборудование: {str(type)}")
+                self.layout.addWidget(self.lable_type, 2, 0)
+
+                cur.execute(
+                    "SELECT names.name "
+                    "FROM equipments "
+                    "INNER JOIN names ON names.id = equipments.type_id "
+                    f"WHERE equipments.id = '{str(index)}'"
+                )
+                name = cur.fetchall()
+                name = ','.join(map(str, name))
+                for r in (('(', ''), (',)', ''), ("'", '')):
+                    name = str(name.replace(*r))
+                #print(name)
+                self.lable_name.setText(f"Наименование: {str(name)}")
+                self.layout.addWidget(self.lable_name, 0, 1)
+
+                cur.execute(
+                    "SELECT names.sn "
+                    "FROM equipments "
+                    "INNER JOIN names ON names.id = equipments.type_id "
+                    f"WHERE equipments.id = '{str(index)}'"
+                )
+                sn = cur.fetchall()
+                sn = ','.join(map(str, sn))
+                for r in (('(', ''), (',)', ''), ("'", '')):
+                    sn = str(sn.replace(*r))
+                #print(sn)
+                self.lable_sn.setText(f"Серийный номер: {str(sn)}")
+                self.layout.addWidget(self.lable_sn, 1, 1)
+
+                cur.execute(
+                    "SELECT names.date "
+                    "FROM equipments "
+                    "INNER JOIN names ON names.id = equipments.type_id "
+                    f"WHERE equipments.id = '{str(index)}'"
+                )
+                date = cur.fetchall()
+                #print(date)
+                date = ','.join(map(str, date))
+                for r in (("(Decimal('", ''), ("'),)", '')):
+                    date = str(date.replace(*r))
+                print(date)
+                self.lable_date.setText(f"Год выпуска: {str(date)}")
+                self.layout.addWidget(self.lable_date, 2, 1)
+
+        except Exception as e:
+            error = QMessageBox()
+            error.setWindowTitle("Ошибка")
+            error.setText("Что-то пошло не так")
+            error.setIcon(QMessageBox.Warning)
+            error.setStandardButtons(QMessageBox.Ok)
+            error.setDetailedText(f'Error {e}')
+            print(f'Error {e}')
+            error.exec_()
+        finally:
+            pass
+
 
 if __name__ == "__main__":
     import sys
     app = QApplication(sys.argv)
     main_window = Main_Window()
-    equipment_window = Equipment_Window(Main_Window())
     main_window.show()
     sys.exit(app.exec_())
 

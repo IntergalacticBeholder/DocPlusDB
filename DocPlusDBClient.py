@@ -1,93 +1,142 @@
 import psycopg2
 import xlwt
+
 from PyQt5 import QtCore, QtGui, QtWidgets
-from PyQt5.QtWidgets import QApplication, QMainWindow, QMessageBox, QCompleter, QFileDialog
+from PyQt5.QtWidgets import *
 from config import *
 
-class Window(QMainWindow):
 
+class Main_Window(QMainWindow):
     def __init__(self):
-        super(Window, self).__init__()
-        self.resize(900, 800)
+        super(Main_Window, self).__init__()
+        self.resize(1000, 750)
         self.centralwidget = QtWidgets.QWidget(self)
         self.setCentralWidget(self.centralwidget)
         self.setWindowTitle('DocPlusDB')
         self.setWindowIcon(QtGui.QIcon('logo.png'))
+        self.centralwidget.setFont(QtGui.QFont("Times", 10))
         self.search_groupe = QtWidgets.QGroupBox('Поиск', self.centralwidget)
-        self.search_groupe.setGeometry(10, 10, 880, 610)
+
         self.btn_clear = QtWidgets.QPushButton(self.search_groupe)
-        self.btn_clear.setGeometry(QtCore.QRect(770, 575, 100, 20))
         self.btn_clear.setText("Очистить")
         self.btn_clear.clicked.connect(self.start_clear)
+        self.btn_clear.setFixedWidth(100)
+
         self.btn_search = QtWidgets.QPushButton(self.search_groupe)
-        self.btn_search.setGeometry(QtCore.QRect(770, 15, 100, 20))
         self.btn_search.setText("Поиск")
+        self.btn_search.setFixedWidth(100)
+
         self.btn_save = QtWidgets.QPushButton(self.search_groupe)
-        self.btn_save.setGeometry(QtCore.QRect(10, 575, 100, 20))
         self.btn_save.setText("Сохранить")
         self.btn_save.setEnabled(False)
+        self.btn_save.setFixedWidth(100)
         self.btn_save.clicked.connect(self.save_table)
         self.btn_search.clicked.connect(self.start_search)
+
         self.table = QtWidgets.QTableWidget(self.search_groupe)
-        self.table.setGeometry(10, 45, 860, 520)
+        self.table.setMinimumHeight(150)
         self.table.sortByColumn(2, QtCore.Qt.AscendingOrder)
+        self.table.itemDoubleClicked.connect(self.equipment_show)
+
         self.search = QtWidgets.QLineEdit(self.search_groupe)
-        self.search.setGeometry(500, 15, 250, 20)
+
         self.search_for_what = QtWidgets.QComboBox(self.search_groupe)
-        self.search_for_what.setGeometry(10, 15, 130, 20)
+        self.search_for_what.setMinimumWidth(110)
         self.search_for_what.addItems(['Всё', 'По Адресу', 'По Оборудованию', 'По Имени'])
-        self.search_for_what2 = QtWidgets.QComboBox(self.search_groupe)
-        self.search_for_what2.setGeometry(150, 15, 250, 20)
         self.search_for_what.currentTextChanged.connect(self.sfw2)
+
+        self.search_for_what2 = QtWidgets.QComboBox(self.search_groupe)
+        self.search_for_what2.setMinimumWidth(110)
         self.search_for_what2.currentTextChanged.connect(self.sfw3)
+
         self.search_for_what3 = QtWidgets.QComboBox(self.search_groupe)
-        self.search_for_what3.setGeometry(410, 15, 80, 20)
+        self.search_for_what3.setMaximumWidth(50)
+
+        self.layout = QGridLayout(self.centralwidget)
+        self.layout.addWidget(self.search_groupe, 0, 0)
+        self.layout_search = QGridLayout(self.search_groupe)
+        self.layout_search.addWidget(self.search_for_what, 0, 0)
+        self.layout_search.addWidget(self.search_for_what2, 0, 1)
+        self.layout_search.addWidget(self.search_for_what3, 0, 2)
+        self.layout_search.addWidget(self.search, 0, 3)
+        self.layout_search.addWidget(self.btn_search, 0, 4)
+        self.layout_search.addWidget(self.table, 1, 0, 1, 5)
+        self.layout_search.addWidget(self.btn_save, 3, 0)
+        self.layout_search.addWidget(self.btn_clear, 3, 4)
+
 
         #Добавление
         self.add_groupe = QtWidgets.QGroupBox('Добавление', self.centralwidget)
         self.add_groupe.setGeometry(10, 630, 880, 160)
+
         self.add_lable_address = QtWidgets.QLabel(self.add_groupe)
-        self.add_lable_address.setGeometry(10, 10, 200, 20)
         self.add_lable_address.setText('Адрес:')
+
         self.add_CB_address = QtWidgets.QComboBox(self.add_groupe)
-        self.add_CB_address.setGeometry(10, 30, 250, 20)
+        self.add_CB_address.setFixedWidth(300)
         self.add_CB_address.currentTextChanged.connect(self.add_room)
+
         self.add_lable_room = QtWidgets.QLabel(self.add_groupe)
-        self.add_lable_room.setGeometry(10, 60, 200, 20)
         self.add_lable_room.setText('Кабинет:')
+
         self.add_CB_room = QtWidgets.QComboBox(self.add_groupe)
-        self.add_CB_room.setGeometry(10, 80, 250, 20)
+        self.add_CB_room.setFixedWidth(300)
+
         self.add_lable_type = QtWidgets.QLabel(self.add_groupe)
-        self.add_lable_type.setGeometry(10, 110, 200, 20)
         self.add_lable_type.setText('Оборудование:')
+
         self.add_CB_type = QtWidgets.QComboBox(self.add_groupe)
-        self.add_CB_type.setGeometry(10, 130, 250, 20)
+        self.add_CB_type.setFixedWidth(300)
         self.add_CB_type.currentTextChanged.connect(self.sfw2)
+
         self.add_lable_name = QtWidgets.QLabel(self.add_groupe)
-        self.add_lable_name.setGeometry(300, 10, 200, 20)
-        self.add_lable_name.setText('Наименования:')
+        self.add_lable_name.setText('Наименование:')
+
         self.add_name = QtWidgets.QLineEdit(self.add_groupe)
-        self.add_name.setGeometry(300, 30, 250, 20)
+        self.add_name.setFixedWidth(300)
+
         self.add_lable_sn = QtWidgets.QLabel(self.add_groupe)
-        self.add_lable_sn.setGeometry(300, 60, 200, 20)
         self.add_lable_sn.setText('Серийный номер:')
+
         self.add_sn = QtWidgets.QLineEdit(self.add_groupe)
-        self.add_sn.setGeometry(300, 80, 250, 20)
-        self.add_lable_sn = QtWidgets.QLabel(self.add_groupe)
-        self.add_lable_sn.setGeometry(300, 110, 200, 20)
-        self.add_lable_sn.setText('Год выпуска:')
+        self.add_sn.setFixedWidth(300)
+
+        self.add_lable_date = QtWidgets.QLabel(self.add_groupe)
+        self.add_lable_date.setText('Год выпуска:')
+
         self.add_date = QtWidgets.QLineEdit(self.add_groupe)
-        self.add_date.setGeometry(300, 130, 250, 20)
+        self.add_date.setFixedWidth(300)
+
         self.btn_add = QtWidgets.QPushButton(self.add_groupe)
-        self.btn_add.setGeometry(770, 30, 100, 20)
+        self.btn_add.setFixedWidth(100)
         self.btn_add.setText("Добавить")
         self.btn_add.clicked.connect(self.start_add)
+
         self.btn_add_clear = QtWidgets.QPushButton(self.add_groupe)
-        self.btn_add_clear.setGeometry(QtCore.QRect(770, 130, 100, 20))
+        self.btn_add_clear.setFixedWidth(100)
         self.btn_add_clear.setText("Очистить")
-        self.btn_add_clear.clicked.connect(self.start_clear)
+        self.btn_add_clear.clicked.connect(self.start_add_clear)
+
         self.add_groupe.setEnabled(False)
         self.add_groupe.setCheckable(False)
+
+        self.layout.addWidget(self.add_groupe, 1, 0)
+        self.layout_add = QGridLayout(self.add_groupe)
+        self.layout_add.addWidget(self.add_lable_address, 0, 0, alignment = QtCore.Qt.AlignLeft)
+        self.layout_add.addWidget(self.add_CB_address, 1, 0, alignment = QtCore.Qt.AlignLeft)
+        self.layout_add.addWidget(self.add_lable_room, 2, 0, alignment = QtCore.Qt.AlignLeft)
+        self.layout_add.addWidget(self.add_CB_room, 3, 0, alignment = QtCore.Qt.AlignLeft)
+        self.layout_add.addWidget(self.add_lable_type, 4, 0, alignment = QtCore.Qt.AlignLeft)
+        self.layout_add.addWidget(self.add_CB_type, 5, 0, alignment = QtCore.Qt.AlignLeft)
+        self.layout_add.addWidget(self.add_lable_name, 0, 1, alignment = QtCore.Qt.AlignLeft)
+        self.layout_add.addWidget(self.add_name, 1, 1, alignment = QtCore.Qt.AlignLeft)
+        self.layout_add.addWidget(self.add_lable_sn, 2, 1, alignment = QtCore.Qt.AlignLeft)
+        self.layout_add.addWidget(self.add_sn, 3, 1, alignment = QtCore.Qt.AlignLeft)
+        self.layout_add.addWidget(self.add_lable_date, 4, 1, alignment = QtCore.Qt.AlignLeft)
+        self.layout_add.addWidget(self.add_date, 5, 1, alignment = QtCore.Qt.AlignLeft)
+        self.layout_add.addWidget(self.btn_add, 1, 200, alignment = QtCore.Qt.AlignRight)
+        self.layout_add.addWidget(self.btn_add_clear, 5, 200, alignment = QtCore.Qt.AlignRight)
+
         self.add_all()
 
     #"""Настройка добавления оборудования"""
@@ -359,8 +408,6 @@ class Window(QMainWindow):
                         f"WHERE to_tsvector(name) @@ plainto_tsquery('{str(self.search.text())}')"
                     )
                 data = cur.fetchall()
-
-                print(data)
                 a = len(data)  # rows
                 b = len(data[0])  # columns
                 #print(data, data[0])
@@ -500,15 +547,16 @@ class Window(QMainWindow):
             if con:
                 con.close()
 
+    def start_add_clear(self):
+        self.add_name.clear()
+        self.add_sn.clear()
+        self.add_date.clear()
+
     #"""Кнопка сохранения"""
     def save_table(self):
         rows = self.table.rowCount()
         cols = self.table.columnCount()
         heads = ['id', 'Адрес', 'Кабинет', 'Оборудование', 'Наименование', 'С/Н', 'Год выпуска']
-        if not rows:
-            error = QMessageBox.information(self, 'Внимание!', 'Нечего сохранять.')
-            return
-
         name, _ = QFileDialog.getSaveFileName(self, 'Сохранить', '.', 'Excel(*.xls)')
         if not name:
             error = QMessageBox.information(self, 'Внимание!', 'Укажите имя файла')
@@ -540,10 +588,161 @@ class Window(QMainWindow):
             i += 1
         wb.save(name)
 
+    #"""Показать Данные оборудовани"""
+    def equipment_show(self):
+
+        row = self.table.currentIndex().row()
+        global index
+        index = self.table.model().index(row, 0).data()
+        print(index)
+        self.equipment_window = Equipment_Window()
+        self.equipment_window.show()
+
+
+
+class Equipment_Window(QtWidgets.QWidget):
+    def __init__(self):
+        super(Equipment_Window, self).__init__()
+        self.resize(700, 450)
+        self.centralwidget = QtWidgets.QWidget(self)
+        self.setWindowTitle('Данные')
+        self.setWindowIcon(QtGui.QIcon('logo.png'))
+        self.centralwidget.setFont(QtGui.QFont("Times", 10))
+        self.layout = QGridLayout(self.centralwidget)
+        self.lable_address = QtWidgets.QLabel(self.centralwidget)
+        self.lable_room = QtWidgets.QLabel(self.centralwidget)
+        self.lable_type = QtWidgets.QLabel(self.centralwidget)
+        self.lable_name = QtWidgets.QLabel(self.centralwidget)
+        self.lable_sn = QtWidgets.QLabel(self.centralwidget)
+        self.lable_date = QtWidgets.QLabel(self.centralwidget)
+        self.table = QtWidgets.QTableWidget(self.centralwidget)
+
+        self.btn_change = QtWidgets.QPushButton(self.centralwidget)
+        self.btn_change.setText("Изменить")
+        self.btn_change.setEnabled(False)
+        self.btn_add = QtWidgets.QPushButton(self.centralwidget)
+        self.btn_add.setText("Добавить запись")
+        self.btn_add.setEnabled(False)
+        self.layout.addWidget(self.btn_change, 0, 3)
+        self.layout.addWidget(self.btn_add, 2, 3)
+        self.layout.addWidget(self.table, 3, 0, 3, 4)
+        self.table.setMinimumHeight(50)
+        try:
+            con = psycopg2.connect(
+                host=host,
+                user=user,
+                password=password,
+                database=db_name
+            )
+            with con.cursor() as cur:
+
+                #"""Кнопка поиска без фильтров"""
+                cur.execute(
+                    "SELECT streets.street "
+                    "FROM equipments "
+                    "INNER JOIN address ON address.id = equipments.address_id "
+                    "INNER JOIN streets ON street_id = streets.id "
+                    f"WHERE equipments.id = '{str(index)}'"
+                )
+                address = cur.fetchall()
+                address = ','.join(map(str, address))
+                for r in (('(', ''), (',)', ''), ("'", '')):
+                    address = str(address.replace(*r))
+                #print(address)
+                self.lable_address.setText(f"Адрес: {str(address)}")
+                self.layout.addWidget(self.lable_address, 0, 0)
+
+                cur.execute(
+                    "SELECT address.room "
+                    "FROM equipments "
+                    "INNER JOIN address ON address.id = equipments.address_id "
+                    f"WHERE equipments.id = '{str(index)}'"
+                )
+                room = cur.fetchall()
+                room = ','.join(map(str, room))
+                for r in (('(', ''), (',)', ''), ("'", '')):
+                    room = str(room.replace(*r))
+                #print(room)
+
+                self.lable_room.setText(f"Кабинет: {str(room)}")
+                self.layout.addWidget(self.lable_room, 1, 0)
+
+                cur.execute(
+                    "SELECT types.type "
+                    "FROM equipments "
+                    "INNER JOIN types ON types.id = equipments.type_id "
+                    f"WHERE equipments.id = '{str(index)}'"
+                )
+                type = cur.fetchall()
+                type = ','.join(map(str, type))
+                for r in (('(', ''), (',)', ''), ("'", '')):
+                    type = str(type.replace(*r))
+                #print(type)
+                self.lable_type.setText(f"Оборудование: {str(type)}")
+                self.layout.addWidget(self.lable_type, 2, 0)
+
+                cur.execute(
+                    "SELECT names.name "
+                    "FROM equipments "
+                    "INNER JOIN names ON names.id = equipments.type_id "
+                    f"WHERE equipments.id = '{str(index)}'"
+                )
+                name = cur.fetchall()
+                name = ','.join(map(str, name))
+                for r in (('(', ''), (',)', ''), ("'", '')):
+                    name = str(name.replace(*r))
+                #print(name)
+                self.lable_name.setText(f"Наименование: {str(name)}")
+                self.layout.addWidget(self.lable_name, 0, 1)
+
+                cur.execute(
+                    "SELECT names.sn "
+                    "FROM equipments "
+                    "INNER JOIN names ON names.id = equipments.type_id "
+                    f"WHERE equipments.id = '{str(index)}'"
+                )
+                sn = cur.fetchall()
+                sn = ','.join(map(str, sn))
+                for r in (('(', ''), (',)', ''), ("'", '')):
+                    sn = str(sn.replace(*r))
+                #print(sn)
+                self.lable_sn.setText(f"Серийный номер: {str(sn)}")
+                self.layout.addWidget(self.lable_sn, 1, 1)
+
+                cur.execute(
+                    "SELECT names.date "
+                    "FROM equipments "
+                    "INNER JOIN names ON names.id = equipments.type_id "
+                    f"WHERE equipments.id = '{str(index)}'"
+                )
+                date = cur.fetchall()
+                #print(date)
+                date = ','.join(map(str, date))
+                for r in (("(Decimal('", ''), ("'),)", '')):
+                    date = str(date.replace(*r))
+                print(date)
+                self.lable_date.setText(f"Год выпуска: {str(date)}")
+                self.layout.addWidget(self.lable_date, 2, 1)
+
+        except Exception as e:
+            error = QMessageBox()
+            error.setWindowTitle("Ошибка")
+            error.setText("Что-то пошло не так")
+            error.setIcon(QMessageBox.Warning)
+            error.setStandardButtons(QMessageBox.Ok)
+            error.setDetailedText(f'Error {e}')
+            print(f'Error {e}')
+            error.exec_()
+        finally:
+            pass
+
 
 if __name__ == "__main__":
     import sys
     app = QApplication(sys.argv)
-    window = Window()
-    window.show()
+    main_window = Main_Window()
+    main_window.show()
     sys.exit(app.exec_())
+
+
+
