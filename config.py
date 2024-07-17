@@ -1,4 +1,4 @@
-host = "127.0.0.1"
+host = "10.10.0.139"
 user = "postgres"
 password = "admin"
 db_name ="docplus"
