@@ -25,13 +25,14 @@ class Main_Window(QMainWindow):
         self.btn_search = QtWidgets.QPushButton(self.search_groupe)
         self.btn_search.setText("Поиск")
         self.btn_search.setFixedWidth(100)
+        self.btn_search.clicked.connect(self.start_search)
 
         self.btn_save = QtWidgets.QPushButton(self.search_groupe)
         self.btn_save.setText("Сохранить")
         self.btn_save.setEnabled(False)
         self.btn_save.setFixedWidth(100)
         self.btn_save.clicked.connect(self.save_table)
-        self.btn_search.clicked.connect(self.start_search)
+
 
         self.table = QtWidgets.QTableWidget(self.search_groupe)
         self.table.setMinimumHeight(150)
@@ -209,7 +210,8 @@ class Main_Window(QMainWindow):
                             f"address.room "
                             f"FROM address "
                             f"INNER JOIN streets ON street_id = streets.id "
-                            f"WHERE streets.street = '{str(self.add_CB_address.currentText())}'")
+                            f"WHERE streets.street = '{str(self.add_CB_address.currentText())}' "
+                            f"ORDER BY room ASC ")
                 x = cur.fetchall()
                 x = ','.join(map(str, x))
                 for r in (('(', ''), (',)', ''), ("'", '')):
@@ -227,8 +229,7 @@ class Main_Window(QMainWindow):
             print(f'Error {e}')
             error.exec_()
         finally:
-            if con:
-                con.close()
+            pass
 
     #"""Настройки поиска"""
     def sfw2(self):
@@ -325,8 +326,11 @@ class Main_Window(QMainWindow):
                 cur.execute(f"SELECT "
                             f"address.room "
                             f"FROM address "
+                            f""
                             f"INNER JOIN streets ON street_id = streets.id "
-                            f"WHERE streets.street = '{str(self.search_for_what2.currentText())}'")
+                            f"WHERE streets.street = '{str(self.search_for_what2.currentText())}' "
+                            f"ORDER BY room ASC "
+                            )
                 x = cur.fetchall()
                 #print(x)
                 x = ','.join(map(str, x))
@@ -595,12 +599,12 @@ class Main_Window(QMainWindow):
         row = self.table.currentIndex().row()
         global index
         index = self.table.model().index(row, 0).data()
-        print(index)
+        #print(index)
         self.equipment_window = Equipment_Window()
         self.equipment_window.show()
 
 
-
+#"""Информационное окно"""
 class Equipment_Window(QtWidgets.QWidget):
     def __init__(self):
         super(Equipment_Window, self).__init__()
@@ -610,24 +614,69 @@ class Equipment_Window(QtWidgets.QWidget):
         self.setWindowIcon(QtGui.QIcon('logo.png'))
         self.centralwidget.setFont(QtGui.QFont("Times", 10))
         self.layout = QGridLayout(self.centralwidget)
+
         self.lable_address = QtWidgets.QLabel(self.centralwidget)
+        self.lable_address.setText("Адрес:")
+        self.layout.addWidget(self.lable_address, 0, 0)
+        self.address = QtWidgets.QComboBox(self.centralwidget)
+        self.address.currentTextChanged.connect(self.room_info)
+
         self.lable_room = QtWidgets.QLabel(self.centralwidget)
+        self.lable_room.setText("Кабинет:")
+        self.layout.addWidget(self.lable_room, 2, 0)
+        self.room = QtWidgets.QComboBox(self.centralwidget)
+        self.layout.addWidget(self.room, 3, 0)
+        self.room.setEnabled(False)
         self.lable_type = QtWidgets.QLabel(self.centralwidget)
+        self.lable_type.setText("Оборудование:")
+        self.layout.addWidget(self.lable_type, 4, 0)
+        self.type = QtWidgets.QComboBox(self.centralwidget)
+
         self.lable_name = QtWidgets.QLabel(self.centralwidget)
+        self.lable_name.setText("Наименование:")
+        self.layout.addWidget(self.lable_name, 0, 1)
+        self.name = QtWidgets.QLineEdit(self.centralwidget)
+
         self.lable_sn = QtWidgets.QLabel(self.centralwidget)
+        self.lable_sn.setText("Серийный номер:")
+        self.layout.addWidget(self.lable_sn, 2, 1)
+        self.sn = QtWidgets.QLineEdit(self.centralwidget)
+
         self.lable_date = QtWidgets.QLabel(self.centralwidget)
+        self.lable_date.setText("Год выпуска:")
+        self.layout.addWidget(self.lable_date, 4, 1)
+        self.date = QtWidgets.QLineEdit(self.centralwidget)
+
         self.table = QtWidgets.QTableWidget(self.centralwidget)
+        self.layout.addWidget(self.table, 6, 0, 4, 4)
+        self.table.setMinimumHeight(50)
 
         self.btn_change = QtWidgets.QPushButton(self.centralwidget)
         self.btn_change.setText("Изменить")
-        self.btn_change.setEnabled(False)
+        #self.btn_change.setEnabled(False)
+        self.btn_change.clicked.connect(self.change_equipment)
+        self.layout.addWidget(self.btn_change, 1, 3)
+
+        self.btn_save = QtWidgets.QPushButton(self.centralwidget)
+        self.btn_save.setText("Сохранить")
+        #self.btn_change.setEnabled(False)
+        self.btn_save.clicked.connect(self.change_equipment)
+        self.layout.addWidget(self.btn_save, 3, 3)
+        self.btn_save.setEnabled(False)
+
+        self.btn_cansel = QtWidgets.QPushButton(self.centralwidget)
+        self.btn_cansel.setText("Отменить")
+        #self.btn_change.setEnabled(False)
+        self.btn_cansel.clicked.connect(self.change_equipment)
+        self.layout.addWidget(self.btn_cansel, 5, 3)
+        self.btn_cansel.setEnabled(False)
+
         self.btn_add = QtWidgets.QPushButton(self.centralwidget)
         self.btn_add.setText("Добавить запись")
         self.btn_add.setEnabled(False)
-        self.layout.addWidget(self.btn_change, 0, 3)
-        self.layout.addWidget(self.btn_add, 2, 3)
-        self.layout.addWidget(self.table, 3, 0, 3, 4)
-        self.table.setMinimumHeight(50)
+        self.layout.addWidget(self.btn_add, 11, 3)
+
+
         try:
             con = psycopg2.connect(
                 host=host,
@@ -638,38 +687,43 @@ class Equipment_Window(QtWidgets.QWidget):
             with con.cursor() as cur:
 
                 #"""Выдача инфы"""
+
+                #"""Адрес"""
+                cur.execute("SELECT street FROM streets")
+                x = cur.fetchall()
+                x = ','.join(map(str, x))
+                for r in (('(', ''), (',)', ''), ("'", '')):
+                    x = x.replace(*r)
+                self.address.addItems(x.split(','))
+                self.layout.addWidget(self.address, 1, 0)
                 cur.execute(
-                    "SELECT streets.street "
+                    "SELECT streets.id "
                     "FROM equipments "
                     "INNER JOIN address ON address.id = equipments.address_id "
                     "INNER JOIN streets ON street_id = streets.id "
                     f"WHERE equipments.id = '{str(index)}'"
                 )
                 address = cur.fetchall()
+                #print(address)
                 address = ','.join(map(str, address))
                 for r in (('(', ''), (',)', ''), ("'", '')):
                     address = str(address.replace(*r))
-                #print(address)
-                self.lable_address.setText(f"Адрес: {str(address)}")
-                self.layout.addWidget(self.lable_address, 0, 0)
+                self.address.setCurrentIndex(int(address)-1)
+                self.address.setEnabled(False)
 
-                cur.execute(
-                    "SELECT address.room "
-                    "FROM equipments "
-                    "INNER JOIN address ON address.id = equipments.address_id "
-                    f"WHERE equipments.id = '{str(index)}'"
-                )
-                room = cur.fetchall()
-                room = ','.join(map(str, room))
+                #"""Кабинет"""
+
+
+                #"""Оборудование"""
+                cur.execute("SELECT type FROM types")
+                x = cur.fetchall()
+                x = ','.join(map(str, x))
                 for r in (('(', ''), (',)', ''), ("'", '')):
-                    room = str(room.replace(*r))
-                #print(room)
-
-                self.lable_room.setText(f"Кабинет: {str(room)}")
-                self.layout.addWidget(self.lable_room, 1, 0)
-
+                    x = x.replace(*r)
+                self.type.addItems(x.split(','))
+                self.layout.addWidget(self.type, 5, 0)
                 cur.execute(
-                    "SELECT types.type "
+                    "SELECT types.id "
                     "FROM equipments "
                     "INNER JOIN types ON types.id = equipments.type_id "
                     f"WHERE equipments.id = '{str(index)}'"
@@ -679,9 +733,10 @@ class Equipment_Window(QtWidgets.QWidget):
                 for r in (('(', ''), (',)', ''), ("'", '')):
                     type = str(type.replace(*r))
                 #print(type)
-                self.lable_type.setText(f"Оборудование: {str(type)}")
-                self.layout.addWidget(self.lable_type, 2, 0)
+                self.type.setCurrentIndex(int(type)-1)
+                self.type.setEnabled(False)
 
+                #"""Наименование"""
                 cur.execute(
                     "SELECT names.name "
                     "FROM equipments "
@@ -693,9 +748,12 @@ class Equipment_Window(QtWidgets.QWidget):
                 for r in (('(', ''), (',)', ''), ("'", '')):
                     name = str(name.replace(*r))
                 #print(name)
-                self.lable_name.setText(f"Наименование: {str(name)}")
-                self.layout.addWidget(self.lable_name, 0, 1)
+                self.name.setText(f"{str(name)}")
+                self.layout.addWidget(self.name, 1, 1)
+                self.name.setMinimumWidth(250)
+                self.name.setEnabled(False)
 
+                #"""Серийный номер"""
                 cur.execute(
                     "SELECT names.sn "
                     "FROM equipments "
@@ -707,9 +765,11 @@ class Equipment_Window(QtWidgets.QWidget):
                 for r in (('(', ''), (',)', ''), ("'", '')):
                     sn = str(sn.replace(*r))
                 #print(sn)
-                self.lable_sn.setText(f"Серийный номер: {str(sn)}")
-                self.layout.addWidget(self.lable_sn, 1, 1)
+                self.sn.setText(f"{str(sn)}")
+                self.layout.addWidget(self.sn, 3, 1)
+                self.sn.setEnabled(False)
 
+                #"""Дата создания"""
                 cur.execute(
                     "SELECT names.date "
                     "FROM equipments "
@@ -721,8 +781,9 @@ class Equipment_Window(QtWidgets.QWidget):
                 for r in (("(Decimal('", ''), ("'),)", '')):
                     date = str(date.replace(*r))
                 #print(date)
-                self.lable_date.setText(f"Год выпуска: {str(date)}")
-                self.layout.addWidget(self.lable_date, 2, 1)
+                self.date.setText(f"{str(date)}")
+                self.layout.addWidget(self.date, 5, 1)
+                self.date.setEnabled(False)
 
         except Exception as e:
             error = QMessageBox()
@@ -736,6 +797,62 @@ class Equipment_Window(QtWidgets.QWidget):
         finally:
             pass
 
+    def change_equipment(self):
+        self.address.setEnabled(True)
+        self.room.setEnabled(True)
+        self.type.setEnabled(True)
+        self.name.setEnabled(True)
+        self.sn.setEnabled(True)
+        self.date.setEnabled(True)
+        self.btn_save.setEnabled(True)
+        self.btn_cansel.setEnabled(True)
+        self.btn_change.setEnabled(False)
+
+    def room_info(self):
+        try:
+            con = psycopg2.connect(
+                host=host,
+                user=user,
+                password=password,
+                database=db_name
+            )
+            with con.cursor() as cur:
+                cur.execute(f"SELECT "
+                            f"address.room "
+                            f"FROM address "
+                            f"INNER JOIN streets ON street_id = streets.id "
+                            f"WHERE streets.street = '{str(self.address.currentText())}'")
+                x = cur.fetchall()
+                x = ','.join(map(str, x))
+                for r in (('(', ''), (',)', ''), ("'", '')):
+                    x = x.replace(*r)
+                self.room.clear()
+                self.room.addItems(x.split(','))
+                cur.execute(
+                    "SELECT address.room "
+                    "FROM equipments "
+                    "INNER JOIN address ON address.id = equipments.address_id "
+                    f"WHERE equipments.id = '{str(index)}'"
+                )
+                room = cur.fetchall()
+                print(room)
+                room = ','.join(map(str, room))
+                print(room)
+                for r in (('(', ''), (',)', ''), ("'", '')):
+                    room = str(room.replace(*r))
+                    print(room)
+                self.room.setCurrentText(room)
+        except Exception as e:
+            error = QMessageBox()
+            error.setWindowTitle("Ошибка")
+            error.setText("Что-то пошло не так")
+            error.setIcon(QMessageBox.Warning)
+            error.setStandardButtons(QMessageBox.Ok)
+            error.setDetailedText(f'Error {e}')
+            print(f'Error {e}')
+            error.exec_()
+        finally:
+            pass
 
 if __name__ == "__main__":
     import sys
