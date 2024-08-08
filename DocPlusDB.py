@@ -426,7 +426,7 @@ class Main_Window(QMainWindow):
                 self.table.setHorizontalHeaderLabels(
                         ['id', 'Адрес', 'Кабинет', 'Оборудование', 'Наименование', 'С/Н', 'Год выпуска'])
                 self.table.setSortingEnabled(True)
-                self.table.sortByColumn(2, QtCore.Qt.AscendingOrder)
+                self.table.sortByColumn(1, QtCore.Qt.AscendingOrder)
 
                 self.table.resizeColumnsToContents()
                 self.table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
@@ -523,7 +523,7 @@ class Main_Window(QMainWindow):
                 add_message.setIcon(QMessageBox.Question)
                 add_message.setStandardButtons(QMessageBox.Cancel|QMessageBox.Ok)
                 add_message.exec_()
-                if add_message.Ok:
+                if add_message.standardButton(add_message.clickedButton()) == QMessageBox.Ok:
                     """Добавление в базу"""
                     cur.execute(
                         f"INSERT INTO equipments ( "
@@ -535,6 +535,14 @@ class Main_Window(QMainWindow):
                     add_message = QMessageBox()
                     add_message.setWindowTitle("Успешно")
                     add_message.setText("Оборудование добавленно в базу")
+                    add_message.setIcon(QMessageBox.Information)
+                    add_message.setStandardButtons(QMessageBox.Ok)
+                    add_message.exec_()
+                else:
+                    print('ОТМЕНА!')
+                    add_message = QMessageBox()
+                    add_message.setWindowTitle("Отмена")
+                    add_message.setText("Оборудование НЕ добавленно в базу")
                     add_message.setIcon(QMessageBox.Information)
                     add_message.setStandardButtons(QMessageBox.Ok)
                     add_message.exec_()
@@ -599,7 +607,7 @@ class Main_Window(QMainWindow):
         row = self.table.currentIndex().row()
         global index
         index = self.table.model().index(row, 0).data()
-        #print(index)
+        print(index)
         self.equipment_window = Equipment_Window()
         self.equipment_window.show()
 
@@ -660,14 +668,14 @@ class Equipment_Window(QtWidgets.QWidget):
         self.btn_save = QtWidgets.QPushButton(self.centralwidget)
         self.btn_save.setText("Сохранить")
         #self.btn_change.setEnabled(False)
-        self.btn_save.clicked.connect(self.change_equipment)
+        self.btn_save.clicked.connect(self.save_change)
         self.layout.addWidget(self.btn_save, 3, 3)
         self.btn_save.setEnabled(False)
 
         self.btn_cansel = QtWidgets.QPushButton(self.centralwidget)
         self.btn_cansel.setText("Отменить")
         #self.btn_change.setEnabled(False)
-        self.btn_cansel.clicked.connect(self.change_equipment)
+        self.btn_cansel.clicked.connect(self.cansel)
         self.layout.addWidget(self.btn_cansel, 5, 3)
         self.btn_cansel.setEnabled(False)
 
@@ -708,6 +716,7 @@ class Equipment_Window(QtWidgets.QWidget):
                 address = ','.join(map(str, address))
                 for r in (('(', ''), (',)', ''), ("'", '')):
                     address = str(address.replace(*r))
+                    print(address)
                 self.address.setCurrentIndex(int(address)-1)
                 self.address.setEnabled(False)
 
@@ -723,7 +732,7 @@ class Equipment_Window(QtWidgets.QWidget):
                 self.type.addItems(x.split(','))
                 self.layout.addWidget(self.type, 5, 0)
                 cur.execute(
-                    "SELECT types.id "
+                    "SELECT types.type "
                     "FROM equipments "
                     "INNER JOIN types ON types.id = equipments.type_id "
                     f"WHERE equipments.id = '{str(index)}'"
@@ -733,7 +742,7 @@ class Equipment_Window(QtWidgets.QWidget):
                 for r in (('(', ''), (',)', ''), ("'", '')):
                     type = str(type.replace(*r))
                 #print(type)
-                self.type.setCurrentIndex(int(type)-1)
+                self.type.setCurrentText(type)
                 self.type.setEnabled(False)
 
                 #"""Наименование"""
@@ -835,12 +844,10 @@ class Equipment_Window(QtWidgets.QWidget):
                     f"WHERE equipments.id = '{str(index)}'"
                 )
                 room = cur.fetchall()
-                print(room)
                 room = ','.join(map(str, room))
-                print(room)
+                #print(room)
                 for r in (('(', ''), (',)', ''), ("'", '')):
                     room = str(room.replace(*r))
-                    print(room)
                 self.room.setCurrentText(room)
         except Exception as e:
             error = QMessageBox()
@@ -853,6 +860,134 @@ class Equipment_Window(QtWidgets.QWidget):
             error.exec_()
         finally:
             pass
+
+    def save_change(self):
+        try:
+            con = psycopg2.connect(
+                host=host,
+                user=user,
+                password=password,
+                database=db_name
+            )
+            with con.cursor() as cur:
+
+                ###"""Редактирование значений"""
+                ###"""Адрес и комната"""
+                cur.execute(
+                    f"SELECT streets.id "
+                    f"From streets "
+                    f"WHERE streets.street = '{str(self.address.currentText())}'"
+                )
+                street_id = cur.fetchall()
+                street_id = ','.join(map(str, street_id))
+                for r in (('(', ''), (',)', ''), ("'", '')):
+                    street_id = str(street_id.replace(*r))
+                cur.execute(
+                    f"SELECT address.id "
+                    f"FROM address "
+                    f"WHERE address.street_id = '{street_id}' AND address.room = '{str(self.room.currentText())}'"
+                )
+                address_id = cur.fetchall()
+                address_id = ','.join(map(str, address_id))
+                for r in (('(', ''), (',)', ''), ("'", '')):
+                    address_id = str(address_id.replace(*r))
+                print(address_id)
+                cur.execute(
+                    f"UPDATE equipments "
+                    f"SET address_id = '{address_id}' "
+                    f"FROM address "
+                    f"WHERE address.id = equipments.address_id AND equipments.id = {str(index)}"
+                )
+
+                ###"""Тип"""
+                cur.execute(
+                    f"SELECT types.id "
+                    f"FROM types "
+                    f"WHERE types.type = '{str(self.type.currentText())}'"
+                )
+                type_id = cur.fetchall()
+                type_id = ','.join(map(str, type_id))
+                for r in (('(', ''), (',)', ''), ("'", '')):
+                    type_id = str(type_id.replace(*r))
+                cur.execute(
+                    f"UPDATE equipments "
+                    f"SET type_id = '{type_id}' "
+                    f"FROM types "
+                    f"WHERE types.id = equipments.type_id AND equipments.id = {str(index)}"
+                )
+
+                ###"""Имя"""
+                cur.execute(
+                    f"UPDATE names "
+                    f"SET name = '{str(self.name.text())}' "
+                    f"FROM equipments  "
+                    f"WHERE names.id = equipments.name_id AND equipments.id = {str(index)}"
+                )
+
+                ###"""Серийник"""
+                cur.execute(
+                    f"UPDATE names "
+                    f"SET sn = '{str(self.sn.text())}' "
+                    f"FROM equipments  "
+                    f"WHERE names.id = equipments.name_id AND equipments.id = {str(index)}"
+                )
+                ###"""Дата"""
+                cur.execute(
+                    f"UPDATE names "
+                    f"SET date = '{str(self.date.text())}' "
+                    f"FROM equipments  "
+                    f"WHERE names.id = equipments.name_id AND equipments.id = {str(index)}"
+                )
+                save_message = QMessageBox()
+                save_message.setWindowTitle("Изменение")
+                save_message.setText("Изменить данные?")
+                save_message.setIcon(QMessageBox.Question)
+                save_message.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+                save_message.exec_()
+                if save_message.standardButton(save_message.clickedButton()) == QMessageBox.Yes:
+                    con.commit()
+                    print('УСПЕШНО ИЗМЕНЕНО!')
+                    change_message = QMessageBox()
+                    change_message.setWindowTitle("Успешно")
+                    change_message.setText("Данные изменены")
+                    change_message.setIcon(QMessageBox.Information)
+                    change_message.setStandardButtons(QMessageBox.Ok)
+                    change_message.exec_()
+                else:
+                    print('ОТМЕНА')
+                    change_message = QMessageBox()
+                    change_message.setWindowTitle("Отмена")
+                    change_message.setText("Данные НЕ изменены")
+                    change_message.setIcon(QMessageBox.Information)
+                    change_message.setStandardButtons(QMessageBox.Ok)
+                    change_message.exec_()
+                self.cansel()
+
+
+
+
+        except Exception as e:
+            error = QMessageBox()
+            error.setWindowTitle("Ошибка")
+            error.setText("Что-то пошло не так")
+            error.setIcon(QMessageBox.Warning)
+            error.setStandardButtons(QMessageBox.Ok)
+            error.setDetailedText(f'Error {e}')
+            print(f'Error {e}')
+            error.exec_()
+        finally:
+            pass
+
+    def cansel(self):
+        self.btn_change.setEnabled(True)
+        self.btn_save.setEnabled(False)
+        self.btn_cansel.setEnabled(False)
+        self.address.setEnabled(False)
+        self.room.setEnabled(False)
+        self.type.setEnabled(False)
+        self.name.setEnabled(False)
+        self.sn.setEnabled(False)
+        self.date.setEnabled(False)
 
 if __name__ == "__main__":
     import sys
