@@ -9,13 +9,20 @@ from config import *
 class Main_Window(QMainWindow):
     def __init__(self):
         super(Main_Window, self).__init__()
-        self.resize(1000, 750)
+        self.resize(1100, 800)
         self.centralwidget = QtWidgets.QWidget(self)
         self.setCentralWidget(self.centralwidget)
         self.setWindowTitle('DocPlusDB')
         self.setWindowIcon(QtGui.QIcon('logo.png'))
         self.centralwidget.setFont(QtGui.QFont("Times", 10))
-        self.search_groupe = QtWidgets.QGroupBox('Поиск', self.centralwidget)
+        self.tabs = QtWidgets.QTabWidget(self.centralwidget)
+        self.tab_items = QtWidgets.QWidget()
+        self.tab_repairs = QtWidgets.QWidget()
+        self.tabs.addTab(self.tab_items, 'Оборудование')
+        self.tabs.addTab(self.tab_repairs, 'Журнал')
+
+        ###"""Поиск"""
+        self.search_groupe = QtWidgets.QGroupBox('Поиск', self.tab_items)
 
         self.btn_clear = QtWidgets.QPushButton(self.search_groupe)
         self.btn_clear.setText("Очистить")
@@ -23,7 +30,7 @@ class Main_Window(QMainWindow):
         self.btn_clear.setFixedWidth(100)
 
         self.btn_search = QtWidgets.QPushButton(self.search_groupe)
-        self.btn_search.setText("Поиск")
+        self.btn_search.setText("Сформировать")
         self.btn_search.setFixedWidth(100)
         self.btn_search.clicked.connect(self.start_search)
 
@@ -33,10 +40,8 @@ class Main_Window(QMainWindow):
         self.btn_save.setFixedWidth(100)
         self.btn_save.clicked.connect(self.save_table)
 
-
         self.table = QtWidgets.QTableWidget(self.search_groupe)
         self.table.setMinimumHeight(150)
-        self.table.sortByColumn(2, QtCore.Qt.AscendingOrder)
         self.table.itemDoubleClicked.connect(self.equipment_show)
 
         self.search = QtWidgets.QLineEdit(self.search_groupe)
@@ -54,16 +59,18 @@ class Main_Window(QMainWindow):
         self.search_for_what3.setMinimumWidth(150)
 
         self.layout = QGridLayout(self.centralwidget)
-        self.layout.addWidget(self.search_groupe, 0, 0)
+        self.layout.addWidget(self.tabs, 0, 0)
+        self.layout_1 = QGridLayout(self.tab_items)
+        self.layout_1.addWidget(self.search_groupe, 0, 0)
         self.layout_search = QGridLayout(self.search_groupe)
-        self.layout_search.addWidget(self.search_for_what, 0, 0)
-        self.layout_search.addWidget(self.search_for_what2, 0, 1)
-        self.layout_search.addWidget(self.search_for_what3, 0, 2)
-        self.layout_search.addWidget(self.search, 0, 3)
-        self.layout_search.addWidget(self.btn_search, 0, 4)
-        self.layout_search.addWidget(self.table, 1, 0, 1, 5)
-        self.layout_search.addWidget(self.btn_save, 3, 0)
-        self.layout_search.addWidget(self.btn_clear, 3, 4)
+        self.layout_search.addWidget(self.search_for_what, 1, 0)
+        self.layout_search.addWidget(self.search_for_what2, 1, 1)
+        self.layout_search.addWidget(self.search_for_what3, 1, 2)
+        self.layout_search.addWidget(self.search, 1, 3)
+        self.layout_search.addWidget(self.btn_search, 1, 4)
+        self.layout_search.addWidget(self.table, 2, 0, 1, 5)
+        self.layout_search.addWidget(self.btn_save, 4, 0)
+        self.layout_search.addWidget(self.btn_clear, 4, 4)
 
 
         #Добавление
@@ -121,7 +128,7 @@ class Main_Window(QMainWindow):
         self.add_groupe.setEnabled(False)
         self.add_groupe.setCheckable(False)
 
-        self.layout.addWidget(self.add_groupe, 1, 0)
+        self.layout_1.addWidget(self.add_groupe, 1, 0)
         self.layout_add = QGridLayout(self.add_groupe)
         self.layout_add.addWidget(self.add_lable_address, 0, 0, alignment = QtCore.Qt.AlignLeft)
         self.layout_add.addWidget(self.add_CB_address, 1, 0, alignment = QtCore.Qt.AlignLeft)
@@ -138,7 +145,41 @@ class Main_Window(QMainWindow):
         self.layout_add.addWidget(self.btn_add, 1, 200, alignment = QtCore.Qt.AlignRight)
         self.layout_add.addWidget(self.btn_add_clear, 5, 200, alignment = QtCore.Qt.AlignRight)
 
+
+        #Журнал
+        self.table_repair = QtWidgets.QTableWidget(self.tab_repairs)
+        self.table_repair.setMinimumHeight(150)
+
+        self.btn_search_repair = QtWidgets.QPushButton(self.tab_repairs)
+        self.btn_search_repair.setText("Сформировать")
+        self.btn_search_repair.setFixedWidth(100)
+        self.btn_search_repair.clicked.connect(self.start_search)
+
+        self.search_for_what_repair = QtWidgets.QComboBox(self.tab_repairs)
+        self.search_for_what_repair.setMinimumWidth(130)
+        self.search_for_what_repair.addItems(['Всё', 'По Адресу', 'По Оборудованию', 'По Имени', 'По дате'])
+        self.search_for_what_repair.currentTextChanged.connect(self.sfw2)
+
+        self.search_for_what_repair2 = QtWidgets.QComboBox(self.tab_repairs)
+        self.search_for_what_repair2.setMinimumWidth(250)
+        self.search_for_what_repair2.currentTextChanged.connect(self.sfw3)
+
+        self.search_for_what_repair3 = QtWidgets.QComboBox(self.tab_repairs)
+        self.search_for_what_repair3.setMinimumWidth(150)
+
+        self.search_repair = QtWidgets.QLineEdit(self.tab_repairs)
+
+        self.layout_2 = QGridLayout(self.tab_repairs)
+        self.layout_2.addWidget(self.search_for_what_repair, 1, 0)
+        self.layout_2.addWidget(self.search_for_what_repair2, 1, 1)
+        self.layout_2.addWidget(self.search_for_what_repair3, 1, 2)
+        self.layout_2.addWidget(self.search_repair, 1, 3)
+        self.layout_2.addWidget(self.btn_search_repair, 1, 4)
+        self.layout_2.addWidget(self.table_repair, 2, 0, 2, 5)
+
         self.add_all()
+
+
 
     #"""Настройка добавления оборудования"""
 
@@ -171,6 +212,7 @@ class Main_Window(QMainWindow):
                     #print(x.split(','))
                     self.add_CB_type.addItems(x.split(','))
 
+                    #"""Имя"""
                     cur.execute("SELECT DISTINCT name FROM names")
                     x = cur.fetchall()
                     #print(x)
@@ -211,7 +253,7 @@ class Main_Window(QMainWindow):
                             f"FROM address "
                             f"INNER JOIN streets ON street_id = streets.id "
                             f"WHERE streets.street = '{str(self.add_CB_address.currentText())}' "
-                            f"ORDER BY room ASC ")
+                            f"ORDER BY LENGTH(room), room ASC ")
                 x = cur.fetchall()
                 x = ','.join(map(str, x))
                 for r in (('(', ''), (',)', ''), ("'", '')):
@@ -230,6 +272,121 @@ class Main_Window(QMainWindow):
             error.exec_()
         finally:
             pass
+
+    #"""Очистка таблицы"""
+    def start_clear(self):
+        self.table.clearContents()
+
+    #"""Кнопка Поиска"""
+    def start_search(self):
+        try:
+            con = psycopg2.connect(
+                host=host,
+                user=user,
+                password=password,
+                database=db_name
+            )
+            with con.cursor() as cur:
+
+                #"""Кнопка поиска без фильтров"""
+                if self.search_for_what.currentText() == 'Всё':
+                    cur.execute(
+                        "SELECT equipments.id, streets.street, address.room, types.type, names.name, names.sn, names.date "
+                        "FROM equipments "
+                        "INNER JOIN address ON address.id = equipments.address_id "
+                        "INNER JOIN types ON types.id = equipments.type_id "
+                        "INNER JOIN names ON names.id = equipments.name_id "
+                        "INNER JOIN streets ON street_id = streets.id "
+                        "ORDER BY LENGTH(room), room ASC ;"
+                    )
+
+                #"""Кнопка поиска по адресу"""
+                elif self.search_for_what.currentText() == 'По Адресу':
+                    self.table.clearContents()
+                    if self.search_for_what3.currentText() == 'Всё':
+                        cur.execute(
+                            f"SELECT equipments.id, streets.street, address.room, types.type, names.name, names.sn, names.date "
+                            f"FROM equipments "
+                            f"INNER JOIN address ON address.id = equipments.address_id "
+                            f"INNER JOIN types ON types.id = equipments.type_id "
+                            f"INNER JOIN names ON names.id = equipments.name_id "
+                            f"INNER JOIN streets ON street_id = streets.id "
+                            f"WHERE streets.street = '{str(self.search_for_what2.currentText())}'"
+                            f"ORDER BY LENGTH(room), room ASC ;"
+                        )
+                    else:
+                        cur.execute(
+                            f"SELECT equipments.id, streets.street, address.room, types.type, names.name, names.sn, names.date "
+                            f"FROM equipments "
+                            f"INNER JOIN address ON address.id = equipments.address_id "
+                            f"INNER JOIN types ON types.id = equipments.type_id "
+                            f"INNER JOIN names ON names.id = equipments.name_id "
+                            f"INNER JOIN streets ON street_id = streets.id "
+                            f"WHERE streets.street = '{str(self.search_for_what2.currentText())}' AND address.room = '{str(self.search_for_what3.currentText())}'"
+                            f"ORDER BY LENGTH(room), room ASC ;"
+                        )
+
+                #"""Кнопка поиска по типу"""
+                elif self.search_for_what.currentText() == 'По Оборудованию':
+                    self.table.clearContents()
+                    cur.execute(
+                        f"SELECT equipments.id, streets.street, address.room, types.type, names.name, names.sn, names.date "
+                        f"FROM equipments "
+                        f"INNER JOIN address ON address.id = equipments.address_id "
+                        f"INNER JOIN types ON types.id = equipments.type_id "
+                        f"INNER JOIN names ON names.id = equipments.name_id "
+                        f"INNER JOIN streets ON street_id = streets.id "
+                        f"WHERE types.type = '{str(self.search_for_what2.currentText())}'"
+                        f"ORDER BY LENGTH(room), room ASC ;"
+                    )
+
+                #"""Кнопка поиска по имени"""
+                elif self.search_for_what.currentText() == 'По Имени':
+                    cur.execute(
+                        f"SELECT equipments.id, streets.street, address.room, types.type, names.name, names.sn, names.date "
+                        f"FROM equipments "
+                        f"INNER JOIN address ON address.id = equipments.address_id "
+                        f"INNER JOIN types ON types.id = equipments.type_id "
+                        f"INNER JOIN names ON names.id = equipments.name_id "
+                        f"INNER JOIN streets ON street_id = streets.id "
+                        f"WHERE to_tsvector(name) @@ plainto_tsquery('{str(self.search.text())}')"
+                        f"ORDER BY LENGTH(room), room ASC ;"
+                    )
+                data = cur.fetchall()
+                a = len(data)  # rows
+                b = len(data[0])  # columns
+                #print(data, data[0])
+                self.table.setColumnCount(b)
+                self.table.setRowCount(a)
+                self.table.setSortingEnabled(False)
+                for j in range(a):
+                    for i in range(b):
+                        item = QtWidgets.QTableWidgetItem(str(data[j][i]))
+                        self.table.setItem(j, i, item)
+                self.table.setHorizontalHeaderLabels(
+                        ['id', 'Адрес', 'Кабинет', 'Оборудование', 'Наименование', 'С/Н', 'Год выпуска'])
+                self.table.setSortingEnabled(True)
+                # if self.search_for_what.currentText() == 'По Адресу':
+                #     self.table.sortByColumn(2, QtCore.Qt.AscendingOrder)
+                # else:
+                self.table.sortByColumn(1, QtCore.Qt.AscendingOrder)
+
+                self.table.resizeColumnsToContents()
+                self.table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
+                self.btn_save.setEnabled(True)
+
+        except Exception as e:
+            error = QMessageBox()
+            error.setWindowTitle("Ошибка")
+            error.setText("Что-то пошло не так")
+            error.setIcon(QMessageBox.Warning)
+            error.setStandardButtons(QMessageBox.Ok)
+            error.setDetailedText(f'Error {e}')
+            print(f'Error {e}')
+            error.exec_()
+        finally:
+            if con:
+                con.close()
 
     #"""Настройки поиска"""
     def sfw2(self):
@@ -326,10 +483,9 @@ class Main_Window(QMainWindow):
                 cur.execute(f"SELECT "
                             f"address.room "
                             f"FROM address "
-                            f""
                             f"INNER JOIN streets ON street_id = streets.id "
                             f"WHERE streets.street = '{str(self.search_for_what2.currentText())}' "
-                            f"ORDER BY room ASC "
+                            f"ORDER BY LENGTH(room), room ASC "
                             )
                 x = cur.fetchall()
                 #print(x)
@@ -338,100 +494,8 @@ class Main_Window(QMainWindow):
                 for r in (('(', ''), (',)', ''), ("'", '')):
                     x = x.replace(*r)
                 #print(x.split(','))
+                self.search_for_what3.addItem('Всё')
                 self.search_for_what3.addItems(x.split(','))
-        except Exception as e:
-            error = QMessageBox()
-            error.setWindowTitle("Ошибка")
-            error.setText("Что-то пошло не так")
-            error.setIcon(QMessageBox.Warning)
-            error.setStandardButtons(QMessageBox.Ok)
-            error.setDetailedText(f'Error {e}')
-            print(f'Error {e}')
-            error.exec_()
-        finally:
-            if con:
-                con.close()
-
-    #"""Очистка таблицы"""
-    def start_clear(self):
-        self.table.clearContents()
-
-    #"""Кнопка Поиска"""
-    def start_search(self):
-        try:
-            con = psycopg2.connect(
-                host=host,
-                user=user,
-                password=password,
-                database=db_name
-            )
-            with con.cursor() as cur:
-
-                #"""Кнопка поиска без фильтров"""
-                if self.search_for_what.currentText() == 'Всё':
-                    cur.execute(
-                        "SELECT equipments.id, streets.street, address.room, types.type, names.name, names.sn, names.date "
-                        "FROM equipments "
-                        "INNER JOIN address ON address.id = equipments.address_id "
-                        "INNER JOIN types ON types.id = equipments.type_id "
-                        "INNER JOIN names ON names.id = equipments.name_id "
-                        "INNER JOIN streets ON street_id = streets.id;")
-
-                #"""Кнопка поиска по адресу"""
-                elif self.search_for_what.currentText() == 'По Адресу':
-                    self.table.clearContents()
-                    cur.execute(
-                        f"SELECT equipments.id, streets.street, address.room, types.type, names.name, names.sn, names.date "
-                        f"FROM equipments "
-                        f"INNER JOIN address ON address.id = equipments.address_id "
-                        f"INNER JOIN types ON types.id = equipments.type_id "
-                        f"INNER JOIN names ON names.id = equipments.name_id "
-                        f"INNER JOIN streets ON street_id = streets.id "
-                        f"WHERE streets.street = '{str(self.search_for_what2.currentText())}' AND address.room = '{str(self.search_for_what3.currentText())}'")
-
-                #"""Кнопка поиска по типу"""
-                elif self.search_for_what.currentText() == 'По Оборудованию':
-                    self.table.clearContents()
-                    cur.execute(
-                        f"SELECT equipments.id, streets.street, address.room, types.type, names.name, names.sn, names.date "
-                        f"FROM equipments "
-                        f"INNER JOIN address ON address.id = equipments.address_id "
-                        f"INNER JOIN types ON types.id = equipments.type_id "
-                        f"INNER JOIN names ON names.id = equipments.name_id "
-                        f"INNER JOIN streets ON street_id = streets.id "
-                        f"WHERE types.type = '{str(self.search_for_what2.currentText())}'")
-
-                #"""Кнопка поиска по имени"""
-                elif self.search_for_what.currentText() == 'По Имени':
-                    cur.execute(
-                        f"SELECT equipments.id, streets.street, address.room, types.type, names.name, names.sn, names.date "
-                        f"FROM equipments "
-                        f"INNER JOIN address ON address.id = equipments.address_id "
-                        f"INNER JOIN types ON types.id = equipments.type_id "
-                        f"INNER JOIN names ON names.id = equipments.name_id "
-                        f"INNER JOIN streets ON street_id = streets.id "
-                        f"WHERE to_tsvector(name) @@ plainto_tsquery('{str(self.search.text())}')"
-                    )
-                data = cur.fetchall()
-                a = len(data)  # rows
-                b = len(data[0])  # columns
-                #print(data, data[0])
-                self.table.setColumnCount(b)
-                self.table.setRowCount(a)
-                self.table.setSortingEnabled(False)
-                for j in range(a):
-                    for i in range(b):
-                        item = QtWidgets.QTableWidgetItem(str(data[j][i]))
-                        self.table.setItem(j, i, item)
-                self.table.setHorizontalHeaderLabels(
-                        ['id', 'Адрес', 'Кабинет', 'Оборудование', 'Наименование', 'С/Н', 'Год выпуска'])
-                self.table.setSortingEnabled(True)
-                self.table.sortByColumn(1, QtCore.Qt.AscendingOrder)
-
-                self.table.resizeColumnsToContents()
-                self.table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
-                self.btn_save.setEnabled(True)
-
         except Exception as e:
             error = QMessageBox()
             error.setWindowTitle("Ошибка")
@@ -496,6 +560,7 @@ class Main_Window(QMainWindow):
                     id_type = id_type.replace(*r)
                 print(f"Тип_id: {id_type}")
 
+                #"""Имя"""
                 cur.execute(
                     f"INSERT INTO names ( "
                     f"id, name, sn, date) "
@@ -716,7 +781,7 @@ class Equipment_Window(QtWidgets.QWidget):
                 address = ','.join(map(str, address))
                 for r in (('(', ''), (',)', ''), ("'", '')):
                     address = str(address.replace(*r))
-                    print(address)
+                    #print(address)
                 self.address.setCurrentIndex(int(address)-1)
                 self.address.setEnabled(False)
 
@@ -724,7 +789,10 @@ class Equipment_Window(QtWidgets.QWidget):
 
 
                 #"""Оборудование"""
-                cur.execute("SELECT type FROM types")
+                cur.execute(
+                    "SELECT type FROM types "
+                    "ORDER BY type ASC"
+                )
                 x = cur.fetchall()
                 x = ','.join(map(str, x))
                 for r in (('(', ''), (',)', ''), ("'", '')):
@@ -757,6 +825,17 @@ class Equipment_Window(QtWidgets.QWidget):
                 for r in (('(', ''), (',)', ''), ("'", '')):
                     name = str(name.replace(*r))
                 #print(name)
+                cur.execute("SELECT DISTINCT name FROM names")
+                x = cur.fetchall()
+                # print(x)
+                x = ','.join(map(str, x))
+                # print(x)
+                for r in (('(', ''), (',)', ''), ("'", '')):
+                    x = x.replace(*r)
+                completer = QCompleter(x.split(','))
+                self.name.setCompleter(completer)
+                completer.setCaseSensitivity(QtCore.Qt.CaseInsensitive)
+
                 self.name.setText(f"{str(name)}")
                 self.layout.addWidget(self.name, 1, 1)
                 self.name.setMinimumWidth(250)
