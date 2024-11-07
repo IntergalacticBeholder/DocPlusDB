@@ -156,18 +156,20 @@ class Main_Window(QMainWindow):
 
         self.search_for_what_repair = QtWidgets.QComboBox(self.tab_repairs)
         self.search_for_what_repair.setMinimumWidth(130)
-        self.search_for_what_repair.addItems(['Всё', 'По Адресу', 'По Оборудованию', 'По Имени', 'По Дате'])
+        self.search_for_what_repair.addItems(['Всё', 'По Адресу', 'По Оборудованию', 'По Имени'])
         self.search_for_what_repair.currentTextChanged.connect(self.sfwr2)
 
         self.search_for_what_repair2 = QtWidgets.QComboBox(self.tab_repairs)
         self.search_for_what_repair2.setMinimumWidth(250)
         self.search_for_what_repair2.currentTextChanged.connect(self.sfwr3)
+        self.search_for_what_repair2.setEnabled(False)
 
         self.search_for_what_repair3 = QtWidgets.QComboBox(self.tab_repairs)
         self.search_for_what_repair3.setMinimumWidth(150)
+        self.search_for_what_repair3.setEnabled(False)
 
         self.search_repair = QtWidgets.QLineEdit(self.tab_repairs)
-
+        self.search_repair.setEnabled(False)
         self.table_repair.itemDoubleClicked.connect(self.equipment_show_repair)
 
         self.layout_2 = QGridLayout(self.tab_repairs)
@@ -801,7 +803,7 @@ class Main_Window(QMainWindow):
         self.equipment_window.show()
 
     def start_search_repair(self):
-      try:
+        try:
             con = psycopg2.connect(
                 host=host,
                 user=user,
@@ -907,16 +909,17 @@ class Main_Window(QMainWindow):
                 self.table_repair.resizeColumnsToContents()
                 self.table_repair.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
                 self.btn_save.setEnabled(True)
-
-      except Exception as e:
-          error = QMessageBox()
-          error.setWindowTitle("Ошибка")
-          error.setText("Что-то пошло не так")
-          error.setIcon(QMessageBox.Warning)
-          error.setStandardButtons(QMessageBox.Ok)
-          error.setDetailedText(f'Error {e}')
-          print(f'Error {e}')
-          error.exec_()
+        except IndexError:
+            pass
+        except Exception as e:
+            error = QMessageBox()
+            error.setWindowTitle("Ошибка")
+            error.setText("Что-то пошло не так")
+            error.setIcon(QMessageBox.Warning)
+            error.setStandardButtons(QMessageBox.Ok)
+            error.setDetailedText(f'Error {e}')
+            print(f'Error {e}')
+            error.exec_()
 
     def equipment_show_repair(self):
 

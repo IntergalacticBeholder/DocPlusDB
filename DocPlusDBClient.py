@@ -801,7 +801,7 @@ class Main_Window(QMainWindow):
         self.equipment_window.show()
 
     def start_search_repair(self):
-      try:
+        try:
             con = psycopg2.connect(
                 host=host,
                 user=user,
@@ -907,8 +907,9 @@ class Main_Window(QMainWindow):
                 self.table_repair.resizeColumnsToContents()
                 self.table_repair.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
                 self.btn_save.setEnabled(True)
-
-      except Exception as e:
+        except IndexError:
+            pass
+        except Exception as e:
           error = QMessageBox()
           error.setWindowTitle("Ошибка")
           error.setText("Что-то пошло не так")
