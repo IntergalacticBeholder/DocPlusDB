@@ -9,7 +9,7 @@ from config import *
 class Main_Window(QMainWindow):
     def __init__(self):
         super(Main_Window, self).__init__()
-        self.resize(1100, 800)
+        self.resize(1200, 800)
         self.centralwidget = QtWidgets.QWidget(self)
         self.setCentralWidget(self.centralwidget)
         self.setWindowTitle('DocPlusDB')
@@ -126,7 +126,6 @@ class Main_Window(QMainWindow):
         self.btn_add_clear.clicked.connect(self.start_add_clear)
 
         self.add_groupe.setEnabled(False)
-        self.add_groupe.setCheckable(False)
 
         self.layout_1.addWidget(self.add_groupe, 1, 0)
         self.layout_add = QGridLayout(self.add_groupe)
@@ -153,21 +152,23 @@ class Main_Window(QMainWindow):
         self.btn_search_repair = QtWidgets.QPushButton(self.tab_repairs)
         self.btn_search_repair.setText("Сформировать")
         self.btn_search_repair.setFixedWidth(100)
-        self.btn_search_repair.clicked.connect(self.start_search)
+        self.btn_search_repair.clicked.connect(self.start_search_repair)
 
         self.search_for_what_repair = QtWidgets.QComboBox(self.tab_repairs)
         self.search_for_what_repair.setMinimumWidth(130)
-        self.search_for_what_repair.addItems(['Всё', 'По Адресу', 'По Оборудованию', 'По Имени', 'По дате'])
-        self.search_for_what_repair.currentTextChanged.connect(self.sfw2)
+        self.search_for_what_repair.addItems(['Всё', 'По Адресу', 'По Оборудованию', 'По Имени', 'По Дате'])
+        self.search_for_what_repair.currentTextChanged.connect(self.sfwr2)
 
         self.search_for_what_repair2 = QtWidgets.QComboBox(self.tab_repairs)
         self.search_for_what_repair2.setMinimumWidth(250)
-        self.search_for_what_repair2.currentTextChanged.connect(self.sfw3)
+        self.search_for_what_repair2.currentTextChanged.connect(self.sfwr3)
 
         self.search_for_what_repair3 = QtWidgets.QComboBox(self.tab_repairs)
         self.search_for_what_repair3.setMinimumWidth(150)
 
         self.search_repair = QtWidgets.QLineEdit(self.tab_repairs)
+
+        self.table_repair.itemDoubleClicked.connect(self.equipment_show_repair)
 
         self.layout_2 = QGridLayout(self.tab_repairs)
         self.layout_2.addWidget(self.search_for_what_repair, 1, 0)
@@ -374,7 +375,8 @@ class Main_Window(QMainWindow):
                 self.table.resizeColumnsToContents()
                 self.table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
                 self.btn_save.setEnabled(True)
-
+        except IndexError:
+            pass
         except Exception as e:
             error = QMessageBox()
             error.setWindowTitle("Ошибка")
@@ -405,7 +407,8 @@ class Main_Window(QMainWindow):
                     self.search_for_what2.setEnabled(False)
                     self.search_for_what3.setEnabled(False)
                     self.search_for_what2.clear()
-
+                    self.search_for_what3.clear()
+                    self.search.clear()
                 #"""Поиск по адресу"""
 
                 elif self.search_for_what.currentText() == 'По Адресу':
@@ -470,6 +473,89 @@ class Main_Window(QMainWindow):
             if con:
                 con.close()
 
+    def sfwr2(self):
+        try:
+            con = psycopg2.connect(
+                host=host,
+                user=user,
+                password=password,
+                database=db_name
+            )
+            with con.cursor() as cur:
+
+                # """Поиск без фильтров"""
+                if self.search_for_what_repair.currentText() == 'Всё':
+                    self.search_repair.setEnabled(False)
+                    self.search_for_what_repair2.setEnabled(False)
+                    self.search_for_what_repair3.setEnabled(False)
+                    self.search_for_what_repair2.clear()
+                    self.search_for_what_repair3.clear()
+                    self.search_repair.clear()
+
+                # """Поиск по адресу"""
+
+                elif self.search_for_what_repair.currentText() == 'По Адресу':
+                    self.search_repair.setEnabled(False)
+                    self.search_for_what_repair2.setEnabled(True)
+                    self.search_for_what_repair3.setEnabled(True)
+                    self.search_for_what_repair2.clear()
+                    cur.execute("SELECT street FROM streets")
+                    x = cur.fetchall()
+                    # print(x)
+                    x = ','.join(map(str, x))
+                    # print(x)
+                    for r in (('(', ''), (',)', ''), ("'", '')):
+                        x = x.replace(*r)
+                    # print(x.split(','))
+                    self.search_for_what_repair2.addItems(x.split(','))
+                    # self.sfw3()
+
+                # """Поиск по типу"""
+                elif self.search_for_what_repair.currentText() == 'По Оборудованию':
+                    self.search_repair.setEnabled(False)
+                    self.search_for_what_repair2.setEnabled(True)
+                    self.search_for_what_repair3.setEnabled(False)
+                    self.search_for_what_repair2.clear()
+                    cur.execute("SELECT type FROM types "
+                                "ORDER BY type ASC ")
+                    x = cur.fetchall()
+                    # print(x)
+                    x = ','.join(map(str, x))
+                    # print(x)
+                    for r in (('(', ''), (',)', ''), ("'", '')):
+                        x = x.replace(*r)
+                    self.search_for_what_repair2.addItems(x.split(','))
+
+                # """Поиск по имени"""
+                elif self.search_for_what_repair.currentText() == 'По Имени':
+                    self.search_repair.setEnabled(True)
+                    self.search_for_what_repair2.setEnabled(False)
+                    self.search_for_what_repair3.setEnabled(False)
+                    cur.execute("SELECT DISTINCT name FROM names")
+                    x = cur.fetchall()
+                    # print(x)
+                    x = ','.join(map(str, x))
+                    # print(x)
+                    for r in (('(', ''), (',)', ''), ("'", '')):
+                        x = x.replace(*r)
+                    # print(x.split(','))
+                    completer = QCompleter(x.split(','))
+                    self.search_repair.setCompleter(completer)
+                    completer.setCaseSensitivity(QtCore.Qt.CaseInsensitive)
+                    self.search_for_what_repair2.clear()
+        except Exception as e:
+            error = QMessageBox()
+            error.setWindowTitle("Ошибка")
+            error.setText("Что-то пошло не так")
+            error.setIcon(QMessageBox.Warning)
+            error.setStandardButtons(QMessageBox.Ok)
+            error.setDetailedText(f'Error {e}')
+            print(f'Error {e}')
+            error.exec_()
+        finally:
+            if con:
+                con.close()
+
     def sfw3(self):
         try:
             con = psycopg2.connect(
@@ -509,6 +595,44 @@ class Main_Window(QMainWindow):
             if con:
                 con.close()
 
+    def sfwr3(self):
+        try:
+            con = psycopg2.connect(
+                host=host,
+                user=user,
+                password=password,
+                database=db_name
+            )
+            with con.cursor() as cur:
+                self.search_for_what_repair3.clear()
+                cur.execute(f"SELECT "
+                            f"address.room "
+                            f"FROM address "
+                            f"INNER JOIN streets ON street_id = streets.id "
+                            f"WHERE streets.street = '{str(self.search_for_what_repair2.currentText())}' "
+                            f"ORDER BY LENGTH(room), room ASC "
+                            )
+                x = cur.fetchall()
+                #print(x)
+                x = ','.join(map(str, x))
+                #print(x)
+                for r in (('(', ''), (',)', ''), ("'", '')):
+                    x = x.replace(*r)
+                #print(x.split(','))
+                self.search_for_what_repair3.addItem('Всё')
+                self.search_for_what_repair3.addItems(x.split(','))
+        except Exception as e:
+            error = QMessageBox()
+            error.setWindowTitle("Ошибка")
+            error.setText("Что-то пошло не так")
+            error.setIcon(QMessageBox.Warning)
+            error.setStandardButtons(QMessageBox.Ok)
+            error.setDetailedText(f'Error {e}')
+            print(f'Error {e}')
+            error.exec_()
+        finally:
+            if con:
+                con.close()
     #"""Кнопка добавления"""
     def start_add(self):
         try:
@@ -676,14 +800,140 @@ class Main_Window(QMainWindow):
         self.equipment_window = Equipment_Window()
         self.equipment_window.show()
 
+    def start_search_repair(self):
+      try:
+            con = psycopg2.connect(
+                host=host,
+                user=user,
+                password=password,
+                database=db_name
+            )
+            with con.cursor() as cur:
+
+                #"""Кнопка поиска без фильтров"""
+                if self.search_for_what_repair.currentText() == 'Всё':
+                    self.table_repair.clearContents()
+                    cur.execute(
+                        "SELECT equipments.id, repairs.date, streets.street, address.room, types.type, names.name, names.sn, names.date, repairs.fault, repairs.repair, types_of_repairs.type_of_repair, status.status, repairs.repairman "
+                        "FROM repairs "
+                        "INNER JOIN equipments ON equipments.id = repairs.equipments_id "
+                        "INNER JOIN address ON address.id = equipments.address_id "
+                        "INNER JOIN types ON types.id = equipments.type_id "
+                        "INNER JOIN names ON names.id = equipments.name_id "
+                        "INNER JOIN streets ON street_id = streets.id "
+                        "INNER JOIN status ON status.id = repairs.status_id "
+                        "INNER JOIN types_of_repairs ON types_of_repairs.id = repairs.types_of_repairs_id "
+                        "ORDER BY LENGTH(room), room ASC ;"
+                    )
+                    # """Кнопка поиска по адресу"""
+                elif self.search_for_what_repair.currentText() == 'По Адресу':
+                    self.table_repair.clearContents()
+                    if self.search_for_what_repair3.currentText() == 'Всё':
+                        cur.execute(
+                            "SELECT equipments.id, repairs.date, streets.street, address.room, types.type, names.name, names.sn, names.date, repairs.fault, repairs.repair, types_of_repairs.type_of_repair, status.status, repairs.repairman "
+                            "FROM repairs "
+                            "INNER JOIN equipments ON equipments.id = repairs.equipments_id "
+                            "INNER JOIN address ON address.id = equipments.address_id "
+                            "INNER JOIN types ON types.id = equipments.type_id "
+                            "INNER JOIN names ON names.id = equipments.name_id "
+                            "INNER JOIN streets ON street_id = streets.id "
+                            "INNER JOIN status ON status.id = repairs.status_id "
+                            "INNER JOIN types_of_repairs ON types_of_repairs.id = repairs.types_of_repairs_id "
+                            f"WHERE streets.street = '{str(self.search_for_what_repair2.currentText())}'"
+                            f"ORDER BY LENGTH(room), room ASC ;"
+                        )
+                    else:
+                        cur.execute(
+                            "SELECT equipments.id, repairs.date, streets.street, address.room, types.type, names.name, names.sn, names.date, repairs.fault, repairs.repair, types_of_repairs.type_of_repair, status.status, repairs.repairman "
+                            "FROM repairs "
+                            "INNER JOIN equipments ON equipments.id = repairs.equipments_id "
+                            "INNER JOIN address ON address.id = equipments.address_id "
+                            "INNER JOIN types ON types.id = equipments.type_id "
+                            "INNER JOIN names ON names.id = equipments.name_id "
+                            "INNER JOIN streets ON street_id = streets.id "
+                            "INNER JOIN status ON status.id = repairs.status_id "
+                            "INNER JOIN types_of_repairs ON types_of_repairs.id = repairs.types_of_repairs_id "
+                            f"WHERE streets.street = '{str(self.search_for_what_repair2.currentText())}' AND address.room = '{str(self.search_for_what_repair3.currentText())}'"
+                            f"ORDER BY LENGTH(room), room ASC ;"
+                        )
+
+                # """Кнопка поиска по типу"""
+                elif self.search_for_what_repair.currentText() == 'По Оборудованию':
+                    cur.execute(
+                        "SELECT equipments.id, repairs.date, streets.street, address.room, types.type, names.name, names.sn, names.date, repairs.fault, repairs.repair, types_of_repairs.type_of_repair, status.status, repairs.repairman "
+                        "FROM repairs "
+                        "INNER JOIN equipments ON equipments.id = repairs.equipments_id "
+                        "INNER JOIN address ON address.id = equipments.address_id "
+                        "INNER JOIN types ON types.id = equipments.type_id "
+                        "INNER JOIN names ON names.id = equipments.name_id "
+                        "INNER JOIN streets ON street_id = streets.id "
+                        "INNER JOIN status ON status.id = repairs.status_id "
+                        "INNER JOIN types_of_repairs ON types_of_repairs.id = repairs.types_of_repairs_id "
+                        f"WHERE types.type = '{str(self.search_for_what_repair2.currentText())}'"
+                        f"ORDER BY LENGTH(room), room ASC ;"
+                    )
+
+                # """Кнопка поиска по имени"""
+                elif self.search_for_what_repair.currentText() == 'По Имени':
+                    cur.execute(
+                        "SELECT equipments.id, repairs.date, streets.street, address.room, types.type, names.name, names.sn, names.date, repairs.fault, repairs.repair, types_of_repairs.type_of_repair, status.status, repairs.repairman "
+                        "FROM repairs "
+                        "INNER JOIN equipments ON equipments.id = repairs.equipments_id "
+                        "INNER JOIN address ON address.id = equipments.address_id "
+                        "INNER JOIN types ON types.id = equipments.type_id "
+                        "INNER JOIN names ON names.id = equipments.name_id "
+                        "INNER JOIN streets ON street_id = streets.id "
+                        "INNER JOIN status ON status.id = repairs.status_id "
+                        "INNER JOIN types_of_repairs ON types_of_repairs.id = repairs.types_of_repairs_id "
+                        f"WHERE to_tsvector(name) @@ plainto_tsquery('{str(self.search_repair.text())}')"
+                        f"ORDER BY LENGTH(room), room ASC ;"
+                    )
+                data = cur.fetchall()
+                a = len(data)  # rows
+                b = len(data[0])  # columns
+                self.table_repair.setColumnCount(b)
+                self.table_repair.setRowCount(a)
+                self.table_repair.setSortingEnabled(False)
+                for j in range(a):
+                    for i in range(b):
+                        item = QtWidgets.QTableWidgetItem(str(data[j][i]))
+                        self.table_repair.setItem(j, i, item)
+                self.table_repair.setHorizontalHeaderLabels(
+                    [ 'id', 'Дата', 'Адрес', 'Кабинет', 'Оборудование', 'Наименование', 'С/Н', 'Год выпуска', 'Неисправность', 'Работы', 'Тип', 'Статус', 'Выполнил'])
+                self.table_repair.setSortingEnabled(True)
+                self.table_repair.hideColumn(0)
+                self.table_repair.sortByColumn(1, QtCore.Qt.AscendingOrder)
+
+                self.table_repair.resizeColumnsToContents()
+                self.table_repair.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
+                self.btn_save.setEnabled(True)
+
+      except Exception as e:
+          error = QMessageBox()
+          error.setWindowTitle("Ошибка")
+          error.setText("Что-то пошло не так")
+          error.setIcon(QMessageBox.Warning)
+          error.setStandardButtons(QMessageBox.Ok)
+          error.setDetailedText(f'Error {e}')
+          print(f'Error {e}')
+          error.exec_()
+
+    def equipment_show_repair(self):
+
+        row = self.table_repair.currentIndex().row()
+        global index
+        index = self.table_repair.model().index(row, 0).data()
+        print(index)
+        self.equipment_window = Equipment_Window()
+        self.equipment_window.show()
 
 #"""Информационное окно"""
-class Equipment_Window(QtWidgets.QWidget):
+class Equipment_Window(QMainWindow):
     def __init__(self):
         super(Equipment_Window, self).__init__()
-        self.resize(700, 450)
+        self.resize(715, 450)
         self.centralwidget = QtWidgets.QWidget(self)
-        self.setWindowTitle('Данные')
+        self.setCentralWidget(self.centralwidget)
         self.setWindowIcon(QtGui.QIcon('logo.png'))
         self.centralwidget.setFont(QtGui.QFont("Times", 10))
         self.layout = QGridLayout(self.centralwidget)
@@ -691,18 +941,21 @@ class Equipment_Window(QtWidgets.QWidget):
         self.lable_address = QtWidgets.QLabel(self.centralwidget)
         self.lable_address.setText("Адрес:")
         self.layout.addWidget(self.lable_address, 0, 0)
+        self.lable_address.setFixedHeight(15)
         self.address = QtWidgets.QComboBox(self.centralwidget)
         self.address.currentTextChanged.connect(self.room_info)
 
         self.lable_room = QtWidgets.QLabel(self.centralwidget)
         self.lable_room.setText("Кабинет:")
         self.layout.addWidget(self.lable_room, 2, 0)
+        self.lable_room.setFixedHeight(15)
         self.room = QtWidgets.QComboBox(self.centralwidget)
         self.layout.addWidget(self.room, 3, 0)
         self.room.setEnabled(False)
         self.lable_type = QtWidgets.QLabel(self.centralwidget)
         self.lable_type.setText("Оборудование:")
         self.layout.addWidget(self.lable_type, 4, 0)
+        self.lable_type.setFixedHeight(15)
         self.type = QtWidgets.QComboBox(self.centralwidget)
 
         self.lable_name = QtWidgets.QLabel(self.centralwidget)
@@ -717,12 +970,12 @@ class Equipment_Window(QtWidgets.QWidget):
 
         self.lable_date = QtWidgets.QLabel(self.centralwidget)
         self.lable_date.setText("Год выпуска:")
-        self.layout.addWidget(self.lable_date, 4, 1)
+        self.layout.addWidget(self.lable_date, 4, 1, alignment = QtCore.Qt.AlignLeft)
         self.date = QtWidgets.QLineEdit(self.centralwidget)
 
         self.table = QtWidgets.QTableWidget(self.centralwidget)
         self.layout.addWidget(self.table, 6, 0, 4, 4)
-        self.table.setMinimumHeight(50)
+        self.table.setMinimumHeight(250)
 
         self.btn_change = QtWidgets.QPushButton(self.centralwidget)
         self.btn_change.setText("Изменить")
@@ -746,9 +999,9 @@ class Equipment_Window(QtWidgets.QWidget):
 
         self.btn_add = QtWidgets.QPushButton(self.centralwidget)
         self.btn_add.setText("Добавить запись")
-        self.btn_add.setEnabled(False)
+        self.btn_add.clicked.connect(self.add_entry)
         self.layout.addWidget(self.btn_add, 11, 3)
-
+        self.btn_add.setEnabled(False)
 
         try:
             con = psycopg2.connect(
@@ -759,9 +1012,24 @@ class Equipment_Window(QtWidgets.QWidget):
             )
             with con.cursor() as cur:
 
-                #"""Выдача инфы"""
+                ###"""ПОДХФАТ ИМЕНИ"""
+
+                cur.execute(
+                    "SELECT names.name "
+                    "FROM equipments "
+                    "INNER JOIN names ON names.id = equipments.name_id "
+                    f"WHERE equipments.id = '{str(index)}'"
+                )
+                name = cur.fetchall()
+                name = ','.join(map(str, name))
+                for r in (('(', ''), (',)', ''), ("'", '')):
+                    name = str(name.replace(*r))
+                self.setWindowTitle(f'Данные о {name}')
+
+                ###"""ВЫДАЧА ИНФЫ"""
 
                 #"""Адрес"""
+
                 cur.execute("SELECT street FROM streets")
                 x = cur.fetchall()
                 x = ','.join(map(str, x))
@@ -789,6 +1057,7 @@ class Equipment_Window(QtWidgets.QWidget):
 
 
                 #"""Оборудование"""
+
                 cur.execute(
                     "SELECT type FROM types "
                     "ORDER BY type ASC"
@@ -814,6 +1083,7 @@ class Equipment_Window(QtWidgets.QWidget):
                 self.type.setEnabled(False)
 
                 #"""Наименование"""
+
                 cur.execute(
                     "SELECT names.name "
                     "FROM equipments "
@@ -842,6 +1112,7 @@ class Equipment_Window(QtWidgets.QWidget):
                 self.name.setEnabled(False)
 
                 #"""Серийный номер"""
+
                 cur.execute(
                     "SELECT names.sn "
                     "FROM equipments "
@@ -858,6 +1129,7 @@ class Equipment_Window(QtWidgets.QWidget):
                 self.sn.setEnabled(False)
 
                 #"""Дата создания"""
+
                 cur.execute(
                     "SELECT names.date "
                     "FROM equipments "
@@ -873,6 +1145,41 @@ class Equipment_Window(QtWidgets.QWidget):
                 self.layout.addWidget(self.date, 5, 1)
                 self.date.setEnabled(False)
 
+                #"""РЕМОНТЫ"""
+
+                cur.execute(
+                    "SELECT repairs.date, repairs.fault, repairs.repair,  types_of_repairs.type_of_repair, status.status, repairs.repairman "
+                    "FROM repairs "
+                    "INNER JOIN equipments ON equipments.id = repairs.equipments_id "
+                    "INNER JOIN status ON status.id = repairs.status_id "
+                    "INNER JOIN types_of_repairs ON types_of_repairs.id = repairs.types_of_repairs_id "
+                    f"WHERE equipments.id = '{str(index)}'"
+                    #"ORDER BY LENGTH(date), room ASC ;"
+                )
+                data = cur.fetchall()
+                a = len(data)  # rows
+                b = len(data[0])  # columns
+                self.table.setColumnCount(b)
+                self.table.setRowCount(a)
+                self.table.setSortingEnabled(False)
+                for j in range(a):
+                    for i in range(b):
+                        item = QtWidgets.QTableWidgetItem(str(data[j][i]))
+                        self.table.setItem(j, i, item)
+                self.table.setHorizontalHeaderLabels(
+                    ['Дата', 'Неисправность',
+                     'Работы', 'Тип работ', 'Статус', 'Выполнил'])
+                self.table.setSortingEnabled(True)
+                # if self.search_for_what.currentText() == 'По Адресу':
+                #     self.table.sortByColumn(2, QtCore.Qt.AscendingOrder)
+                # else:
+                self.table.sortByColumn(0, QtCore.Qt.AscendingOrder)
+
+                self.table.resizeColumnsToContents()
+                self.table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
+                self.btn_save.setEnabled(True)
+        except IndexError:
+            pass
         except Exception as e:
             error = QMessageBox()
             error.setWindowTitle("Ошибка")
@@ -882,6 +1189,7 @@ class Equipment_Window(QtWidgets.QWidget):
             error.setDetailedText(f'Error {e}')
             print(f'Error {e}')
             error.exec_()
+
         finally:
             pass
 
@@ -1067,6 +1375,250 @@ class Equipment_Window(QtWidgets.QWidget):
         self.name.setEnabled(False)
         self.sn.setEnabled(False)
         self.date.setEnabled(False)
+
+    def add_entry(self):
+        global index
+        print(index)
+        self.Entry_Window = Entry_Window()
+        self.Entry_Window.show()
+
+
+class Entry_Window(QMainWindow):
+    def __init__(self):
+        super(Entry_Window, self).__init__()
+        self.centralwidget = QtWidgets.QWidget(self)
+        self.setCentralWidget(self.centralwidget)
+        self.setWindowTitle('Добавить запись к ')
+        self.setWindowIcon(QtGui.QIcon('logo.png'))
+        self.centralwidget.setFont(QtGui.QFont("Times", 10))
+        self.layout = QGridLayout(self.centralwidget)
+        self.lable_fault = QtWidgets.QLabel(self.centralwidget)
+        self.lable_fault.setText("Ошибка:")
+        self.layout.addWidget(self.lable_fault, 0, 0)
+        self.lable_fault.setFixedHeight(15)
+        self.fault = QtWidgets.QTextEdit(self.centralwidget)
+        self.layout.addWidget(self.fault, 1, 0, 1, 2)
+
+        self.lable_repair = QtWidgets.QLabel(self.centralwidget)
+        self.lable_repair.setText("Работы:")
+        self.layout.addWidget(self.lable_repair, 0, 2)
+        self.repair = QtWidgets.QTextEdit(self.centralwidget)
+        self.layout.addWidget(self.repair, 1, 2, 1, 3)
+
+        self.lable_type_of_repair = QtWidgets.QLabel(self.centralwidget)
+        self.lable_type_of_repair.setText("Тип работ:")
+        self.layout.addWidget(self.lable_type_of_repair, 2, 0)
+        self.lable_type_of_repair.setFixedHeight(15)
+        self.type_of_repair = QtWidgets.QComboBox(self.centralwidget)
+
+
+        self.lable_status = QtWidgets.QLabel(self.centralwidget)
+        self.lable_status.setText("Статус:")
+        self.layout.addWidget(self.lable_status, 2, 1)
+        self.status = QtWidgets.QComboBox(self.centralwidget)
+
+
+        self.lable_repairman = QtWidgets.QLabel(self.centralwidget)
+        self.lable_repairman.setText("Выполнил:")
+        self.layout.addWidget(self.lable_repairman, 2, 2)
+        self.repairman = QtWidgets.QLineEdit(self.centralwidget)
+
+
+        self.lable_date = QtWidgets.QLabel(self.centralwidget)
+        self.lable_date.setText("Дата:")
+        self.layout.addWidget(self.lable_date, 2, 3)
+        self.date = QDateEdit(self.centralwidget)
+        self.date.setDisplayFormat("yyyy-MM-dd")
+        self.date.setDate(QtCore.QDate.currentDate())
+        self.layout.addWidget(self.date, 3, 3)
+
+        self.btn_cansel = QtWidgets.QPushButton(self.centralwidget)
+        self.btn_cansel.setText("Отмена")
+        self.btn_cansel.clicked.connect(self.cansel)
+        self.layout.addWidget(self.btn_cansel, 4, 0, 4, 2)
+        self.btn_cansel.setFixedHeight(23)
+
+        self.btn_add = QtWidgets.QPushButton(self.centralwidget)
+        self.btn_add.setText("Добавить запись")
+        self.btn_add.clicked.connect(self.add_entry)
+        self.layout.addWidget(self.btn_add, 4, 2, 4, 3)
+
+        try:
+            con = psycopg2.connect(
+                host=host,
+                user=user,
+                password=password,
+                database=db_name
+            )
+
+            ###"""Подхфат имени"""
+
+            with con.cursor() as cur:
+                cur.execute(
+                    "SELECT names.name "
+                    "FROM equipments "
+                    "INNER JOIN names ON names.id = equipments.name_id "
+                    f"WHERE equipments.id = '{str(index)}'"
+                )
+                name = cur.fetchall()
+                name = ','.join(map(str, name))
+                for r in (('(', ''), (',)', ''), ("'", '')):
+                    name = str(name.replace(*r))
+                self.setWindowTitle(f'Добавить запись к {name}')
+
+                #"""Тип работ"""
+
+                cur.execute(
+                    "SELECT type_of_repair FROM types_of_repairs "
+                )
+                type_of_repair = cur.fetchall()
+                type_of_repair = ','.join(map(str, type_of_repair))
+                for r in (('(', ''), (',)', ''), ("'", '')):
+                    type_of_repair = str(type_of_repair.replace(*r))
+                #print(type_of_repair)
+                self.type_of_repair.addItems(type_of_repair.split(','))
+                self.layout.addWidget(self.type_of_repair, 3, 0)
+
+                #"""Статус"""
+
+                cur.execute(
+                    "SELECT status FROM status "
+                    "ORDER BY status ASC "
+                )
+                status = cur.fetchall()
+                status = ','.join(map(str, status))
+                for r in (('(', ''), (',)', ''), ("'", '')):
+                    status = str(status.replace(*r))
+                #print(type_of_repair)
+                self.status.addItems(status.split(','))
+                self.layout.addWidget(self.status, 3, 1)
+
+                #"""Инженер"""
+
+                cur.execute(
+                    "SELECT name FROM repairmans "
+
+                )
+                repairmain = cur.fetchall()
+                repairmain = ','.join(map(str, repairmain))
+                for r in (('(', ''), (',)', ''), ("'", '')):
+                    repairmain = str(repairmain.replace(*r))
+                #print(name)
+                cur.execute("SELECT DISTINCT name FROM repairmans")
+                x = cur.fetchall()
+                # print(x)
+                x = ','.join(map(str, x))
+                # print(x)
+                for r in (('(', ''), (',)', ''), ("'", '')):
+                    x = x.replace(*r)
+                completer = QCompleter(x.split(','))
+                self.repairman.setCompleter(completer)
+                completer.setCaseSensitivity(QtCore.Qt.CaseInsensitive)
+                self.repairman.setText(f"{str(repairmain)}")
+                self.layout.addWidget(self.repairman, 3, 2)
+
+
+        except IndexError:
+            pass
+        except Exception as e:
+            error = QMessageBox()
+            error.setWindowTitle("Ошибка")
+            error.setText("Что-то пошло не так")
+            error.setIcon(QMessageBox.Warning)
+            error.setStandardButtons(QMessageBox.Ok)
+            error.setDetailedText(f'Error {e}')
+            print(f'Error {e}')
+            error.exec_()
+
+        finally:
+            pass
+
+    def cansel(self):
+        self.close()
+
+    def add_entry(self):
+        try:
+            con = psycopg2.connect(
+                host=host,
+                user=user,
+                password=password,
+                database=db_name
+            )
+            with con.cursor() as cur:
+
+                # """ID Статуса"""
+
+                cur.execute(
+                    f"SELECT id "
+                    f"FROM status "
+                    f"WHERE status = '{str(self.status.currentText())}'"
+                )
+                id_status = cur.fetchall()
+                id_status = ','.join(map(str, id_status))
+                for r in (('(', ''), (',)', '')):
+                    id_status = id_status.replace(*r)
+                print(f"Статус_id: {id_status}")
+
+                # """ID Типа ремонта"""
+
+                cur.execute(
+                    f"SELECT id "
+                    f"FROM types_of_repairs "
+                    f"WHERE type_of_repair = '{str(self.type_of_repair.currentText())}'"
+                )
+                id_type_of_repair = cur.fetchall()
+                id_type_of_repair = ','.join(map(str, id_type_of_repair))
+                for r in (('(', ''), (',)', '')):
+                    id_type_of_repair = id_type_of_repair.replace(*r)
+                print(f"Тип ремонта: {id_type_of_repair}")
+
+                add_message = QMessageBox()
+                add_message.setWindowTitle("Добавление в журнал")
+                add_message.setText("Добавить в журнал?")
+                add_message.setIcon(QMessageBox.Question)
+                add_message.setStandardButtons(QMessageBox.Cancel | QMessageBox.Ok)
+                add_message.exec_()
+                if add_message.standardButton(add_message.clickedButton()) == QMessageBox.Ok:
+                    """Добавление в журнал"""
+                    cur.execute(
+                        f"INSERT INTO repairs ( "
+                        f"id, fault, repair, date, status_id, equipments_id, repairman, types_of_repairs_id) "
+                        f"VALUES (DEFAULT, '{str(self.fault.toPlainText())}', '{str(self.repair.toPlainText())}', '{str(self.date.text())}',  '{id_status}', '{index}', '{str(self.repairman.text())}', '{id_type_of_repair}')"
+                    )
+                    #print(f"Ошибка: {str(self.fault.setPlainText())}, Ремонт: {str(self.repair.setPlainText())}, Дата: {str(self.date.text())}, Инженер: {str(self.repairman.text())}")
+                    con.commit()
+
+                    print('УСПЕШНО ДОБАВЛЕННО В ЖУРНАЛ!')
+
+                    add_message = QMessageBox()
+                    add_message.setWindowTitle("Успешно")
+                    add_message.setText("Запись добавленна в журнал")
+                    add_message.setIcon(QMessageBox.Information)
+                    add_message.setStandardButtons(QMessageBox.Ok)
+                    add_message.exec_()
+                    self.close()
+                else:
+                    print('ОТМЕНА!')
+                    add_message = QMessageBox()
+                    add_message.setWindowTitle("Отмена")
+                    add_message.setText("Запись НЕ добавленна в журнал!!!")
+                    add_message.setIcon(QMessageBox.Information)
+                    add_message.setStandardButtons(QMessageBox.Ok)
+                    add_message.exec_()
+
+        except Exception as e:
+            error = QMessageBox()
+            error.setWindowTitle("Ошибка")
+            error.setText("Что-то пошло не так")
+            error.setIcon(QMessageBox.Warning)
+            error.setStandardButtons(QMessageBox.Ok)
+            error.setDetailedText(f'Error {e}')
+            print(f'Error {e}')
+            error.exec_()
+        finally:
+            if con:
+                con.close()
+
 
 if __name__ == "__main__":
     import sys

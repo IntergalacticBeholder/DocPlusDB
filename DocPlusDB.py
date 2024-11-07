@@ -126,7 +126,6 @@ class Main_Window(QMainWindow):
         self.btn_add_clear.clicked.connect(self.start_add_clear)
 
         self.add_groupe.setEnabled(True)
-        self.add_groupe.setCheckable(True)
 
         self.layout_1.addWidget(self.add_groupe, 1, 0)
         self.layout_add = QGridLayout(self.add_groupe)
@@ -1149,10 +1148,11 @@ class Equipment_Window(QMainWindow):
                 #"""РЕМОНТЫ"""
 
                 cur.execute(
-                    "SELECT repairs.date,repairs.fault, repairs.repair, status.status, repairs.repairman "
+                    "SELECT repairs.date, repairs.fault, repairs.repair,  types_of_repairs.type_of_repair, status.status, repairs.repairman "
                     "FROM repairs "
                     "INNER JOIN equipments ON equipments.id = repairs.equipments_id "
                     "INNER JOIN status ON status.id = repairs.status_id "
+                    "INNER JOIN types_of_repairs ON types_of_repairs.id = repairs.types_of_repairs_id "
                     f"WHERE equipments.id = '{str(index)}'"
                     #"ORDER BY LENGTH(date), room ASC ;"
                 )
@@ -1168,7 +1168,7 @@ class Equipment_Window(QMainWindow):
                         self.table.setItem(j, i, item)
                 self.table.setHorizontalHeaderLabels(
                     ['Дата', 'Неисправность',
-                     'Работы', 'Статус', 'Выполнил'])
+                     'Работы', 'Тип работ', 'Статус', 'Выполнил'])
                 self.table.setSortingEnabled(True)
                 # if self.search_for_what.currentText() == 'По Адресу':
                 #     self.table.sortByColumn(2, QtCore.Qt.AscendingOrder)
