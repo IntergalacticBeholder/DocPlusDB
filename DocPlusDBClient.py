@@ -1,49 +1,244 @@
+import os
 import psycopg2
 import xlwt
+import configparser
+import json
+from appdirs import user_config_dir
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtWidgets import *
-from config import *
+from PyQt5.QtCore import Qt, QTimer
 
 
+config_dir = user_config_dir("MyApp", "MyCompany")  # MyApp — имя приложения, MyCompany — имя разработчика
+os.makedirs(config_dir, exist_ok=True)  # Создаем директорию, если её нет
+config_path = os.path.join(config_dir, "config.json")  # Путь к файлу конфигурации
+
+
+def load_config():
+    if os.path.exists(config_path):
+        with open(config_path, "r", encoding="utf-8") as f:
+            return json.load(f)
+
+# Загружаем конфигурацию
+config = load_config()
+
+def save_config(config):
+    with open(config_path, "w", encoding="utf-8") as f:
+        json.dump(config, f, indent=4)
+
+if not config:
+    config = {
+        "host": "10.10.0.63",
+        "user": "postgres",
+        "password": "admin",
+        "db_name": "docplus",
+        "port": "5432"
+    }
+    save_config(config)
+
+# Извлекаем данные из конфигурации
+host = config["host"]
+user = config["user"]
+password = config["password"]
+db_name = config["db_name"]
+port = config["port"]
+
+admin = False
+
+#"""Окно настроек"""
+class Settings_Window(QMainWindow):
+    def __init__(self, config):
+        super(Settings_Window, self).__init__()
+        self.config = config
+        self.setFixedSize(450, 150)
+        self.centralwidget = QtWidgets.QWidget(self)
+        self.setCentralWidget(self.centralwidget)
+        self.setWindowTitle('Настройки подключения')
+        self.setWindowIcon(QtGui.QIcon(resource_path('logo.png')))
+        self.centralwidget.setFont(QtGui.QFont("Times", 10))
+        self.layout = QGridLayout(self.centralwidget)
+
+        self.lable_ip = QtWidgets.QLabel(self.centralwidget)
+        self.lable_ip.setText("Адрес:")
+        self.lable_ip.setFixedHeight(12)
+        self.layout.addWidget(self.lable_ip, 0, 0)
+        self.ip = QtWidgets.QLineEdit(self.centralwidget)
+        self.layout.addWidget(self.ip, 1, 0)
+        self.ip.setText(host)
+        self.ip.setEnabled(False)
+
+        self.lable_port = QtWidgets.QLabel(self.centralwidget)
+        self.lable_port.setText("Порт:")
+        self.lable_port.setFixedHeight(12)
+        self.layout.addWidget(self.lable_port, 2, 0, alignment = QtCore.Qt.AlignLeft)
+        self.port = QtWidgets.QLineEdit(self.centralwidget)
+        self.layout.addWidget(self.port, 3, 0)
+        self.port.setText(str(port))
+        self.port.setEnabled(False)
+
+        self.lable_db_name = QtWidgets.QLabel(self.centralwidget)
+        self.lable_db_name.setText("База:")
+        self.lable_db_name.setFixedHeight(12)
+        self.layout.addWidget(self.lable_db_name, 4, 0, alignment = QtCore.Qt.AlignLeft)
+        self.db_name = QtWidgets.QLineEdit(self.centralwidget)
+        self.layout.addWidget(self.db_name, 5, 0)
+        self.db_name.setText(db_name)
+        self.db_name.setEnabled(False)
+
+        self.lable_user = QtWidgets.QLabel(self.centralwidget)
+        self.lable_user.setText("Пользователь:")
+        self.lable_user.setFixedHeight(12)
+        self.layout.addWidget(self.lable_user, 0, 1)
+        self.user = QtWidgets.QLineEdit(self.centralwidget)
+        self.layout.addWidget(self.user, 1, 1)
+        self.user.setText(user)
+        self.user.setEnabled(False)
+
+        self.lable_password = QtWidgets.QLabel(self.centralwidget)
+        self.lable_password.setText("Пароль:")
+        self.lable_password.setFixedHeight(12)
+        self.layout.addWidget(self.lable_password, 2, 1)
+        self.password = QtWidgets.QLineEdit(self.centralwidget)
+        self.layout.addWidget(self.password, 3, 1)
+        self.password.setText(password)
+        self.password.setEnabled(False)
+
+        self.btn_connect = QtWidgets.QPushButton(self.centralwidget)
+        self.btn_connect.setText("Подключиться")
+        self.btn_connect.clicked.connect(self.connect)
+        self.layout.addWidget(self.btn_connect, 1, 3)
+
+        self.btn_change = QtWidgets.QPushButton(self.centralwidget)
+        self.btn_change.setText("Изменить")
+        self.btn_change.clicked.connect(self.change)
+        self.layout.addWidget(self.btn_change, 3, 3)
+        self.btn_change.setHidden(False)
+
+        self.btn_save = QtWidgets.QPushButton(self.centralwidget)
+        self.btn_save.setText("Сохранить")
+        self.btn_save.clicked.connect(self.save)
+        self.layout.addWidget(self.btn_save, 3, 3)
+        self.btn_save.setHidden(True)
+
+        self.btn_exit = QtWidgets.QPushButton(self.centralwidget)
+        self.btn_exit.setText("Выйти")
+        self.btn_exit.clicked.connect(self.exit)
+        self.layout.addWidget(self.btn_exit, 5, 3)
+
+
+    def connect(self):
+        user = str(self.user.text())
+        self.main_window = Main_Window()
+        self.main_window.show()
+        self.close()
+
+    def change(self):
+        self.btn_change.setHidden(True)
+        self.btn_save.setHidden(False)
+        self.btn_connect.setEnabled(False)
+        self.ip.setEnabled(True)
+        self.port.setEnabled(True)
+        self.db_name.setEnabled(True)
+        self.user.setEnabled(True)
+        self.password.setEnabled(True)
+
+    def save(self):
+
+        save_message = QMessageBox()
+        save_message.setWindowTitle("Изменение")
+        save_message.setText("Изменить данные?")
+        save_message.setIcon(QMessageBox.Question)
+        save_message.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+        save_message.exec_()
+        if save_message.standardButton(save_message.clickedButton()) == QMessageBox.Yes:
+            self.config["host"] = self.ip.text()
+            self.config["port"] = self.port.text()
+            self.config["db_name"] = self.db_name.text()
+            self.config["user"] = self.user.text()
+            self.config["password"] = self.password.text()
+
+            # Сохраняем изменения в файл
+            with open(config_path, "w", encoding="utf-8") as f:
+                json.dump(config, f, indent=4)
+            updated_config = load_config()
+            change_message = QMessageBox()
+            change_message.setWindowTitle("Успешно")
+            change_message.setText("Данные изменены")
+            change_message.setIcon(QMessageBox.Information)
+            change_message.setStandardButtons(QMessageBox.Ok)
+            change_message.exec_()
+            self.btn_connect.setEnabled(True)
+            self.ip.setEnabled(False)
+            self.port.setEnabled(False)
+            self.db_name.setEnabled(False)
+            self.user.setEnabled(False)
+            self.password.setEnabled(False)
+            self.btn_change.setHidden(False)
+            self.btn_save.setHidden(True)
+            print('УСПЕШНО ИЗМЕНЕНО!')
+            os.execl(sys.executable, sys.executable, *sys.argv)
+        else:
+            print('ОТМЕНА')
+            change_message = QMessageBox()
+            change_message.setWindowTitle("Отмена")
+            change_message.setText("Данные НЕ изменены")
+            change_message.setIcon(QMessageBox.Information)
+            change_message.setStandardButtons(QMessageBox.Ok)
+            change_message.exec_()
+
+    def exit(self):
+        sys.exit(app.exec_())
+
+#"""Главное окно"""
 class Main_Window(QMainWindow):
     def __init__(self):
         super(Main_Window, self).__init__()
-        self.resize(1200, 800)
-        self.centralwidget = QtWidgets.QWidget(self)
+        self.resize(1400, 900)
+        self.centralwidget = QtWidgets.QWidget()
         self.setCentralWidget(self.centralwidget)
         self.setWindowTitle('DocPlusDB')
-        self.setWindowIcon(QtGui.QIcon('logo.png'))
-        self.centralwidget.setFont(QtGui.QFont("Times", 10))
+        self.setWindowIcon(QtGui.QIcon(resource_path('logo.png')))
+        self.font = QtGui.QFont("Times", 10)
+        self.centralwidget.setFont(self.font)
         self.tabs = QtWidgets.QTabWidget(self.centralwidget)
         self.tab_items = QtWidgets.QWidget()
         self.tab_repairs = QtWidgets.QWidget()
         self.tabs.addTab(self.tab_items, 'Оборудование')
         self.tabs.addTab(self.tab_repairs, 'Журнал')
 
-        ###"""Поиск"""
+        """ТАЙМЕР ДЛЯ ТАБЛИЦЫ"""
+        self.resize_timer = QTimer()  # Таймер для отложенного пересчета
+        self.resize_timer.setSingleShot(True)  # Таймер сработает только один раз
+        self.resize_timer.timeout.connect(self.resize_rows_to_contents_table)
+
+
+        """ПОИСК"""
         self.search_groupe = QtWidgets.QGroupBox('Поиск', self.tab_items)
 
+        """КНОПКА ОЧИСТИТЬ"""
         self.btn_clear = QtWidgets.QPushButton(self.search_groupe)
         self.btn_clear.setText("Очистить")
         self.btn_clear.clicked.connect(self.start_clear)
         self.btn_clear.setFixedWidth(100)
 
+        """КНОПКА ПОИСКА"""
         self.btn_search = QtWidgets.QPushButton(self.search_groupe)
         self.btn_search.setText("Сформировать")
         self.btn_search.setFixedWidth(100)
         self.btn_search.clicked.connect(self.start_search)
 
+        """КНОПКА СОХРАНИТЬ"""
         self.btn_save = QtWidgets.QPushButton(self.search_groupe)
         self.btn_save.setText("Сохранить")
         self.btn_save.setEnabled(False)
         self.btn_save.setFixedWidth(100)
         self.btn_save.clicked.connect(self.save_table)
 
+        """ТАБЛИЦА"""
         self.table = QtWidgets.QTableWidget(self.search_groupe)
-        self.table.setMinimumHeight(150)
+        self.table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
         self.table.itemDoubleClicked.connect(self.equipment_show)
-
         self.search = QtWidgets.QLineEdit(self.search_groupe)
 
         self.search_for_what = QtWidgets.QComboBox(self.search_groupe)
@@ -52,7 +247,7 @@ class Main_Window(QMainWindow):
         self.search_for_what.currentTextChanged.connect(self.sfw2)
 
         self.search_for_what2 = QtWidgets.QComboBox(self.search_groupe)
-        self.search_for_what2.setMinimumWidth(250)
+        self.search_for_what2.setMinimumWidth(350)
         self.search_for_what2.currentTextChanged.connect(self.sfw3)
 
         self.search_for_what3 = QtWidgets.QComboBox(self.search_groupe)
@@ -77,43 +272,44 @@ class Main_Window(QMainWindow):
         self.add_groupe = QtWidgets.QGroupBox('Добавление', self.centralwidget)
         self.add_groupe.setGeometry(10, 630, 880, 160)
 
+
         self.add_lable_address = QtWidgets.QLabel(self.add_groupe)
         self.add_lable_address.setText('Адрес:')
 
         self.add_CB_address = QtWidgets.QComboBox(self.add_groupe)
-        self.add_CB_address.setFixedWidth(300)
+        self.add_CB_address.setFixedWidth(350)
         self.add_CB_address.currentTextChanged.connect(self.add_room)
 
         self.add_lable_room = QtWidgets.QLabel(self.add_groupe)
         self.add_lable_room.setText('Кабинет:')
 
         self.add_CB_room = QtWidgets.QComboBox(self.add_groupe)
-        self.add_CB_room.setFixedWidth(300)
+        self.add_CB_room.setFixedWidth(350)
 
         self.add_lable_type = QtWidgets.QLabel(self.add_groupe)
         self.add_lable_type.setText('Оборудование:')
 
         self.add_CB_type = QtWidgets.QComboBox(self.add_groupe)
-        self.add_CB_type.setFixedWidth(300)
+        self.add_CB_type.setFixedWidth(350)
         self.add_CB_type.currentTextChanged.connect(self.sfw2)
 
         self.add_lable_name = QtWidgets.QLabel(self.add_groupe)
         self.add_lable_name.setText('Наименование:')
 
         self.add_name = QtWidgets.QLineEdit(self.add_groupe)
-        self.add_name.setFixedWidth(300)
+        self.add_name.setFixedWidth(350)
 
         self.add_lable_sn = QtWidgets.QLabel(self.add_groupe)
         self.add_lable_sn.setText('Серийный номер:')
 
         self.add_sn = QtWidgets.QLineEdit(self.add_groupe)
-        self.add_sn.setFixedWidth(300)
+        self.add_sn.setFixedWidth(350)
 
         self.add_lable_date = QtWidgets.QLabel(self.add_groupe)
         self.add_lable_date.setText('Год выпуска:')
 
         self.add_date = QtWidgets.QLineEdit(self.add_groupe)
-        self.add_date.setFixedWidth(300)
+        self.add_date.setFixedWidth(350)
 
         self.btn_add = QtWidgets.QPushButton(self.add_groupe)
         self.btn_add.setFixedWidth(100)
@@ -124,9 +320,10 @@ class Main_Window(QMainWindow):
         self.btn_add_clear.setFixedWidth(100)
         self.btn_add_clear.setText("Очистить")
         self.btn_add_clear.clicked.connect(self.start_add_clear)
+        if not admin:
+            self.add_groupe.setEnabled(False)
 
-        self.add_groupe.setEnabled(False)
-
+        """СЛОИ"""
         self.layout_1.addWidget(self.add_groupe, 1, 0)
         self.layout_add = QGridLayout(self.add_groupe)
         self.layout_add.addWidget(self.add_lable_address, 0, 0, alignment = QtCore.Qt.AlignLeft)
@@ -146,30 +343,44 @@ class Main_Window(QMainWindow):
 
 
         #Журнал
+        """ТАБЛИЦА РЕМОНТОВ"""
         self.table_repair = QtWidgets.QTableWidget(self.tab_repairs)
         self.table_repair.setMinimumHeight(150)
 
+        """ТАЙМЕР ДЛЯ ТАБЛИЦЫ РЕМОНТОВ"""
+        self.resize_timer_repair = QTimer()  # Таймер для отложенного пересчета
+        self.resize_timer_repair.setSingleShot(True)  # Таймер сработает только один раз
+        self.resize_timer_repair.timeout.connect(self.resize_rows_to_contents_table_repair)
+
+        """КНОПКА ПОИСКА РЕМОНТОВ"""
         self.btn_search_repair = QtWidgets.QPushButton(self.tab_repairs)
         self.btn_search_repair.setText("Сформировать")
         self.btn_search_repair.setFixedWidth(100)
         self.btn_search_repair.clicked.connect(self.start_search_repair)
 
+        """НАСТРОЙКИ ПОИСКА РЕМОНТОВ №1"""
         self.search_for_what_repair = QtWidgets.QComboBox(self.tab_repairs)
         self.search_for_what_repair.setMinimumWidth(130)
-        self.search_for_what_repair.addItems(['Всё', 'По Адресу', 'По Оборудованию', 'По Имени', 'По Дате'])
+        self.search_for_what_repair.addItems(['Всё', 'По Адресу', 'По Оборудованию', 'По Имени'])
         self.search_for_what_repair.currentTextChanged.connect(self.sfwr2)
 
+        """НАСТРОЙКА ПОИСКА РЕМОНТОВ №2"""
         self.search_for_what_repair2 = QtWidgets.QComboBox(self.tab_repairs)
         self.search_for_what_repair2.setMinimumWidth(250)
         self.search_for_what_repair2.currentTextChanged.connect(self.sfwr3)
+        self.search_for_what_repair2.setEnabled(False)
 
+        """НАСТРОЙКА ПОИСКА РЕМОНТОВ №3"""
         self.search_for_what_repair3 = QtWidgets.QComboBox(self.tab_repairs)
         self.search_for_what_repair3.setMinimumWidth(150)
+        self.search_for_what_repair3.setEnabled(False)
 
+        """СТРОКА ДЛЯ ВВОДА"""
         self.search_repair = QtWidgets.QLineEdit(self.tab_repairs)
-
+        self.search_repair.setEnabled(False)
         self.table_repair.itemDoubleClicked.connect(self.equipment_show_repair)
 
+        """СЛОИ"""
         self.layout_2 = QGridLayout(self.tab_repairs)
         self.layout_2.addWidget(self.search_for_what_repair, 1, 0)
         self.layout_2.addWidget(self.search_for_what_repair2, 1, 1)
@@ -179,6 +390,8 @@ class Main_Window(QMainWindow):
         self.layout_2.addWidget(self.table_repair, 2, 0, 2, 5)
 
         self.add_all()
+        self.start_search()
+        self.start_search_repair()
 
 
 
@@ -280,6 +493,8 @@ class Main_Window(QMainWindow):
 
     #"""Кнопка Поиска"""
     def start_search(self):
+        self.table.clearContents()
+        self.table.clear()
         try:
             con = psycopg2.connect(
                 host=host,
@@ -288,71 +503,78 @@ class Main_Window(QMainWindow):
                 database=db_name
             )
             with con.cursor() as cur:
-
                 #"""Кнопка поиска без фильтров"""
                 if self.search_for_what.currentText() == 'Всё':
+
                     cur.execute(
-                        "SELECT equipments.id, streets.street, address.room, types.type, names.name, names.sn, names.date "
+                        "SELECT equipments.id, streets.street, address.room, types.type, names.name, names.sn, names.date, status.status "
                         "FROM equipments "
                         "INNER JOIN address ON address.id = equipments.address_id "
                         "INNER JOIN types ON types.id = equipments.type_id "
                         "INNER JOIN names ON names.id = equipments.name_id "
+                        "INNER JOIN status ON status.id = equipments.status_id "
                         "INNER JOIN streets ON street_id = streets.id "
                         "ORDER BY LENGTH(room), room ASC ;"
                     )
 
                 #"""Кнопка поиска по адресу"""
-                elif self.search_for_what.currentText() == 'По Адресу':
-                    self.table.clearContents()
+                if self.search_for_what.currentText() == 'По Адресу':
+
                     if self.search_for_what3.currentText() == 'Всё':
                         cur.execute(
-                            f"SELECT equipments.id, streets.street, address.room, types.type, names.name, names.sn, names.date "
+                            f"SELECT equipments.id, streets.street, address.room, types.type, names.name, names.sn, names.date, status.status "
                             f"FROM equipments "
                             f"INNER JOIN address ON address.id = equipments.address_id "
                             f"INNER JOIN types ON types.id = equipments.type_id "
                             f"INNER JOIN names ON names.id = equipments.name_id "
+                            "INNER JOIN status ON status.id = equipments.status_id "
                             f"INNER JOIN streets ON street_id = streets.id "
                             f"WHERE streets.street = '{str(self.search_for_what2.currentText())}'"
                             f"ORDER BY LENGTH(room), room ASC ;"
                         )
                     else:
                         cur.execute(
-                            f"SELECT equipments.id, streets.street, address.room, types.type, names.name, names.sn, names.date "
+                            f"SELECT equipments.id, streets.street, address.room, types.type, names.name, names.sn, names.date, status.status "
                             f"FROM equipments "
                             f"INNER JOIN address ON address.id = equipments.address_id "
                             f"INNER JOIN types ON types.id = equipments.type_id "
                             f"INNER JOIN names ON names.id = equipments.name_id "
+                            "INNER JOIN status ON status.id = equipments.status_id "
                             f"INNER JOIN streets ON street_id = streets.id "
                             f"WHERE streets.street = '{str(self.search_for_what2.currentText())}' AND address.room = '{str(self.search_for_what3.currentText())}'"
                             f"ORDER BY LENGTH(room), room ASC ;"
                         )
 
                 #"""Кнопка поиска по типу"""
-                elif self.search_for_what.currentText() == 'По Оборудованию':
-                    self.table.clearContents()
+                if self.search_for_what.currentText() == 'По Оборудованию':
+
                     cur.execute(
-                        f"SELECT equipments.id, streets.street, address.room, types.type, names.name, names.sn, names.date "
+                        f"SELECT equipments.id, streets.street, address.room, types.type, names.name, names.sn, names.date, status.status "
                         f"FROM equipments "
                         f"INNER JOIN address ON address.id = equipments.address_id "
                         f"INNER JOIN types ON types.id = equipments.type_id "
                         f"INNER JOIN names ON names.id = equipments.name_id "
+                        "INNER JOIN status ON status.id = equipments.status_id "
                         f"INNER JOIN streets ON street_id = streets.id "
                         f"WHERE types.type = '{str(self.search_for_what2.currentText())}'"
                         f"ORDER BY LENGTH(room), room ASC ;"
                     )
 
                 #"""Кнопка поиска по имени"""
-                elif self.search_for_what.currentText() == 'По Имени':
+                if self.search_for_what.currentText() == 'По Имени':
                     cur.execute(
-                        f"SELECT equipments.id, streets.street, address.room, types.type, names.name, names.sn, names.date "
+                        f"SELECT equipments.id, streets.street, address.room, types.type, names.name, names.sn, names.date, status.status "
                         f"FROM equipments "
                         f"INNER JOIN address ON address.id = equipments.address_id "
                         f"INNER JOIN types ON types.id = equipments.type_id "
                         f"INNER JOIN names ON names.id = equipments.name_id "
+                        "INNER JOIN status ON status.id = equipments.status_id "
                         f"INNER JOIN streets ON street_id = streets.id "
                         f"WHERE to_tsvector(name) @@ plainto_tsquery('{str(self.search.text())}')"
                         f"ORDER BY LENGTH(room), room ASC ;"
                     )
+
+                #"""Формирование таблицы"""
                 data = cur.fetchall()
                 a = len(data)  # rows
                 b = len(data[0])  # columns
@@ -365,14 +587,17 @@ class Main_Window(QMainWindow):
                         item = QtWidgets.QTableWidgetItem(str(data[j][i]))
                         self.table.setItem(j, i, item)
                 self.table.setHorizontalHeaderLabels(
-                        ['id', 'Адрес', 'Кабинет', 'Оборудование', 'Наименование', 'С/Н', 'Год выпуска'])
+                        ['id', 'Адрес', 'Кабинет', 'Оборудование', 'Наименование', 'С/Н', 'Г/В', 'Статус'])
                 self.table.setSortingEnabled(True)
-                # if self.search_for_what.currentText() == 'По Адресу':
-                #     self.table.sortByColumn(2, QtCore.Qt.AscendingOrder)
-                # else:
-                self.table.sortByColumn(1, QtCore.Qt.AscendingOrder)
-
+                self.font.setBold(True)
+                self.table.horizontalHeader().setFont(self.font)
+                self.table.hideColumn(0)
                 self.table.resizeColumnsToContents()
+                self.table.horizontalHeader().sectionResized.connect(self.start_resize_timer)
+                self.table.horizontalHeader().setMaximumSectionSize(200)
+                self.table.horizontalHeader().setSectionResizeMode(3, QHeaderView.Stretch)
+                self.table.horizontalHeader().setSectionResizeMode(4, QHeaderView.Stretch)
+                self.table.sortByColumn(1, QtCore.Qt.AscendingOrder)
                 self.table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
                 self.btn_save.setEnabled(True)
         except IndexError:
@@ -470,8 +695,9 @@ class Main_Window(QMainWindow):
             print(f'Error {e}')
             error.exec_()
         finally:
-            if con:
-                con.close()
+            pass
+            # if con:
+            #     con.close()
 
     def sfwr2(self):
         try:
@@ -553,8 +779,9 @@ class Main_Window(QMainWindow):
             print(f'Error {e}')
             error.exec_()
         finally:
-            if con:
-                con.close()
+            pass
+            # if con:
+            #     con.close()
 
     def sfw3(self):
         try:
@@ -592,8 +819,9 @@ class Main_Window(QMainWindow):
             print(f'Error {e}')
             error.exec_()
         finally:
-            if con:
-                con.close()
+            pass
+            # if con:
+            #     con.close()
 
     def sfwr3(self):
         try:
@@ -631,9 +859,11 @@ class Main_Window(QMainWindow):
             print(f'Error {e}')
             error.exec_()
         finally:
-            if con:
-                con.close()
-    #"""Кнопка добавления"""
+            pass
+            # if con:
+            #     con.close()
+
+    #"""Кнопка Добавления"""
     def start_add(self):
         try:
             con = psycopg2.connect(
@@ -749,12 +979,13 @@ class Main_Window(QMainWindow):
             if con:
                 con.close()
 
+    #"""Кнопка Очистки"""
     def start_add_clear(self):
         self.add_name.clear()
         self.add_sn.clear()
         self.add_date.clear()
 
-    #"""Кнопка сохранения"""
+    #"""Кнопка Сохранения"""
     def save_table(self):
         rows = self.table.rowCount()
         cols = self.table.columnCount()
@@ -790,17 +1021,10 @@ class Main_Window(QMainWindow):
             i += 1
         wb.save(name)
 
-    #"""Показать Данные оборудовани"""
-    def equipment_show(self):
-
-        row = self.table.currentIndex().row()
-        global index
-        index = self.table.model().index(row, 0).data()
-        print(index)
-        self.equipment_window = Equipment_Window()
-        self.equipment_window.show()
-
+    #"""Кнопка Поиска Ремонтов"""
     def start_search_repair(self):
+        self.table_repair.clearContents()
+        self.table_repair.clear()
         try:
             con = psycopg2.connect(
                 host=host,
@@ -812,7 +1036,6 @@ class Main_Window(QMainWindow):
 
                 #"""Кнопка поиска без фильтров"""
                 if self.search_for_what_repair.currentText() == 'Всё':
-                    self.table_repair.clearContents()
                     cur.execute(
                         "SELECT equipments.id, repairs.date, streets.street, address.room, types.type, names.name, names.sn, names.date, repairs.fault, repairs.repair, types_of_repairs.type_of_repair, status.status, repairs.repairman "
                         "FROM repairs "
@@ -827,7 +1050,7 @@ class Main_Window(QMainWindow):
                     )
                     # """Кнопка поиска по адресу"""
                 elif self.search_for_what_repair.currentText() == 'По Адресу':
-                    self.table_repair.clearContents()
+
                     if self.search_for_what_repair3.currentText() == 'Всё':
                         cur.execute(
                             "SELECT equipments.id, repairs.date, streets.street, address.room, types.type, names.name, names.sn, names.date, repairs.fault, repairs.repair, types_of_repairs.type_of_repair, status.status, repairs.repairman "
@@ -857,7 +1080,7 @@ class Main_Window(QMainWindow):
                             f"ORDER BY LENGTH(room), room ASC ;"
                         )
 
-                # """Кнопка поиска по типу"""
+                #"""Кнопка поиска по типу"""
                 elif self.search_for_what_repair.currentText() == 'По Оборудованию':
                     cur.execute(
                         "SELECT equipments.id, repairs.date, streets.street, address.room, types.type, names.name, names.sn, names.date, repairs.fault, repairs.repair, types_of_repairs.type_of_repair, status.status, repairs.repairman "
@@ -873,7 +1096,7 @@ class Main_Window(QMainWindow):
                         f"ORDER BY LENGTH(room), room ASC ;"
                     )
 
-                # """Кнопка поиска по имени"""
+                #"""Кнопка поиска по имени"""
                 elif self.search_for_what_repair.currentText() == 'По Имени':
                     cur.execute(
                         "SELECT equipments.id, repairs.date, streets.street, address.room, types.type, names.name, names.sn, names.date, repairs.fault, repairs.repair, types_of_repairs.type_of_repair, status.status, repairs.repairman "
@@ -885,9 +1108,11 @@ class Main_Window(QMainWindow):
                         "INNER JOIN streets ON street_id = streets.id "
                         "INNER JOIN status ON status.id = repairs.status_id "
                         "INNER JOIN types_of_repairs ON types_of_repairs.id = repairs.types_of_repairs_id "
-                        f"WHERE to_tsvector(name) @@ plainto_tsquery('{str(self.search_repair.text())}')"
+                        #f"WHERE to_tsvector(name) @@ plainto_tsquery('{str(self.search_repair.text())}')"
                         f"ORDER BY LENGTH(room), room ASC ;"
                     )
+
+                #"""Формирование таблицы"""
                 data = cur.fetchall()
                 a = len(data)  # rows
                 b = len(data[0])  # columns
@@ -899,26 +1124,64 @@ class Main_Window(QMainWindow):
                         item = QtWidgets.QTableWidgetItem(str(data[j][i]))
                         self.table_repair.setItem(j, i, item)
                 self.table_repair.setHorizontalHeaderLabels(
-                    [ 'id', 'Дата', 'Адрес', 'Кабинет', 'Оборудование', 'Наименование', 'С/Н', 'Год выпуска', 'Неисправность', 'Работы', 'Тип', 'Статус', 'Выполнил'])
+                    [ 'id', 'Дата', 'Адрес', 'Кабинет', 'Оборудование', 'Наименование', 'С/Н', 'Г/В', 'Неисправность', 'Работы', 'Тип', 'Статус', 'Выполнил'])
                 self.table_repair.setSortingEnabled(True)
+                self.font.setBold(True)
+                self.table_repair.horizontalHeader().setFont(self.font)
                 self.table_repair.hideColumn(0)
-                self.table_repair.sortByColumn(1, QtCore.Qt.AscendingOrder)
-
+                self.table_repair.sortByColumn(1, QtCore.Qt.DescendingOrder)
                 self.table_repair.resizeColumnsToContents()
+                self.table_repair.horizontalHeader().sectionResized.connect(self.start_resize_timer_repair)
+                self.table_repair.horizontalHeader().setMaximumSectionSize(130)
+                self.table_repair.horizontalHeader().setSectionResizeMode(8, QHeaderView.Stretch)
+                self.table_repair.horizontalHeader().setSectionResizeMode(9, QHeaderView.Stretch)
                 self.table_repair.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
+
+
                 self.btn_save.setEnabled(True)
         except IndexError:
             pass
         except Exception as e:
-          error = QMessageBox()
-          error.setWindowTitle("Ошибка")
-          error.setText("Что-то пошло не так")
-          error.setIcon(QMessageBox.Warning)
-          error.setStandardButtons(QMessageBox.Ok)
-          error.setDetailedText(f'Error {e}')
-          print(f'Error {e}')
-          error.exec_()
+            error = QMessageBox()
+            error.setWindowTitle("Ошибка")
+            error.setText("Что-то пошло не так")
+            error.setIcon(QMessageBox.Warning)
+            error.setStandardButtons(QMessageBox.Ok)
+            error.setDetailedText(f'Error {e}')
+            print(f'Error {e}')
+            error.exec_()
 
+    #"""Таймер Для Пересчета Таблицы"""
+    def start_resize_timer(self):
+        self.resize_timer.start(150)
+
+    #"""Таймер Для Пересчета Таблицы"""
+    def start_resize_timer_repair(self):
+        self.resize_timer_repair.start(50)
+
+    #"""Пересчет Таблицы"""
+    def resize_rows_to_contents_table(self):
+        self.table.setUpdatesEnabled(False)  # Отключаем обновление
+        self.table.resizeRowsToContents()  # Пересчитываем высоту строк
+        self.table.setUpdatesEnabled(True)  # Включаем обновление
+
+    #"""Пересчет Таблицы Ремонтов"""
+    def resize_rows_to_contents_table_repair(self):
+        self.table_repair.setUpdatesEnabled(False)  # Отключаем обновление
+        self.table_repair.resizeRowsToContents()  # Пересчитываем высоту строк
+        self.table_repair.setUpdatesEnabled(True)  # Включаем обновление
+
+    #"""Показать Данные Оборудования"""
+    def equipment_show(self):
+
+        row = self.table.currentIndex().row()
+        global index
+        index = self.table.model().index(row, 0).data()
+        print(index)
+        self.equipment_window = Equipment_Window()
+        self.equipment_window.show()
+
+    #"""Показать Данные Оборудования В Таблице Ремонта"""
     def equipment_show_repair(self):
 
         row = self.table_repair.currentIndex().row()
@@ -928,6 +1191,7 @@ class Main_Window(QMainWindow):
         self.equipment_window = Equipment_Window()
         self.equipment_window.show()
 
+
 #"""Информационное окно"""
 class Equipment_Window(QMainWindow):
     def __init__(self):
@@ -935,7 +1199,7 @@ class Equipment_Window(QMainWindow):
         self.resize(715, 450)
         self.centralwidget = QtWidgets.QWidget(self)
         self.setCentralWidget(self.centralwidget)
-        self.setWindowIcon(QtGui.QIcon('logo.png'))
+        self.setWindowIcon(QtGui.QIcon(resource_path('logo.png')))
         self.centralwidget.setFont(QtGui.QFont("Times", 10))
         self.layout = QGridLayout(self.centralwidget)
 
@@ -980,7 +1244,8 @@ class Equipment_Window(QMainWindow):
 
         self.btn_change = QtWidgets.QPushButton(self.centralwidget)
         self.btn_change.setText("Изменить")
-        self.btn_change.setEnabled(False)
+        if not admin:
+            self.btn_change.setEnabled(False)
         self.btn_change.clicked.connect(self.change_equipment)
         self.layout.addWidget(self.btn_change, 1, 3)
 
@@ -991,18 +1256,20 @@ class Equipment_Window(QMainWindow):
         self.layout.addWidget(self.btn_save, 3, 3)
         self.btn_save.setEnabled(False)
 
-        self.btn_cansel = QtWidgets.QPushButton(self.centralwidget)
-        self.btn_cansel.setText("Отменить")
+        self.btn_cancel = QtWidgets.QPushButton(self.centralwidget)
+        self.btn_cancel.setText("Отменить")
         #self.btn_change.setEnabled(False)
-        self.btn_cansel.clicked.connect(self.cansel)
-        self.layout.addWidget(self.btn_cansel, 5, 3)
-        self.btn_cansel.setEnabled(False)
+        self.btn_cancel.clicked.connect(self.cancel)
+        self.layout.addWidget(self.btn_cancel, 5, 3)
+        self.btn_cancel.setEnabled(False)
 
         self.btn_add = QtWidgets.QPushButton(self.centralwidget)
         self.btn_add.setText("Добавить запись")
         self.btn_add.clicked.connect(self.add_entry)
         self.layout.addWidget(self.btn_add, 11, 3)
-        self.btn_add.setEnabled(False)
+        if not admin:
+            self.btn_add.setEnabled(False)
+
 
         try:
             con = psycopg2.connect(
@@ -1025,7 +1292,7 @@ class Equipment_Window(QMainWindow):
                 name = ','.join(map(str, name))
                 for r in (('(', ''), (',)', ''), ("'", '')):
                     name = str(name.replace(*r))
-                self.setWindowTitle(f'Данные о {name}')
+                self.setWindowTitle(f'Данные о "{name}"')
 
                 ###"""ВЫДАЧА ИНФЫ"""
 
@@ -1171,10 +1438,12 @@ class Equipment_Window(QMainWindow):
                     ['Дата', 'Неисправность',
                      'Работы', 'Тип работ', 'Статус', 'Выполнил'])
                 self.table.setSortingEnabled(True)
-                # if self.search_for_what.currentText() == 'По Адресу':
-                #     self.table.sortByColumn(2, QtCore.Qt.AscendingOrder)
-                # else:
-                self.table.sortByColumn(0, QtCore.Qt.AscendingOrder)
+                self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
+                self.table.verticalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
+                self.table.horizontalHeader().setMaximumSectionSize(200)
+                self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
+                self.table.horizontalHeader().setSectionResizeMode(2, QHeaderView.Stretch)
+                self.table.sortByColumn(0, QtCore.Qt.DescendingOrder)
 
                 self.table.resizeColumnsToContents()
                 self.table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
@@ -1202,7 +1471,7 @@ class Equipment_Window(QMainWindow):
         self.sn.setEnabled(True)
         self.date.setEnabled(True)
         self.btn_save.setEnabled(True)
-        self.btn_cansel.setEnabled(True)
+        self.btn_cancel.setEnabled(True)
         self.btn_change.setEnabled(False)
 
     def room_info(self):
@@ -1349,7 +1618,7 @@ class Equipment_Window(QMainWindow):
                     change_message.setIcon(QMessageBox.Information)
                     change_message.setStandardButtons(QMessageBox.Ok)
                     change_message.exec_()
-                self.cansel()
+                self.cancel()
 
 
 
@@ -1366,10 +1635,10 @@ class Equipment_Window(QMainWindow):
         finally:
             pass
 
-    def cansel(self):
+    def cancel(self):
         self.btn_change.setEnabled(True)
         self.btn_save.setEnabled(False)
-        self.btn_cansel.setEnabled(False)
+        self.btn_cancel.setEnabled(False)
         self.address.setEnabled(False)
         self.room.setEnabled(False)
         self.type.setEnabled(False)
@@ -1390,59 +1659,60 @@ class Entry_Window(QMainWindow):
         self.centralwidget = QtWidgets.QWidget(self)
         self.setCentralWidget(self.centralwidget)
         self.setWindowTitle('Добавить запись к ')
-        self.setWindowIcon(QtGui.QIcon('logo.png'))
+        self.setWindowIcon(QtGui.QIcon(resource_path('logo.png')))
         self.centralwidget.setFont(QtGui.QFont("Times", 10))
         self.layout = QGridLayout(self.centralwidget)
         self.lable_fault = QtWidgets.QLabel(self.centralwidget)
+
         self.lable_fault.setText("Ошибка:")
         self.layout.addWidget(self.lable_fault, 0, 0)
         self.lable_fault.setFixedHeight(15)
-        self.fault = QtWidgets.QTextEdit(self.centralwidget)
-        self.layout.addWidget(self.fault, 1, 0, 1, 2)
+        self.fault = QtWidgets.QLineEdit(self.centralwidget)
+        self.layout.addWidget(self.fault, 1, 0, 1, 4)
 
         self.lable_repair = QtWidgets.QLabel(self.centralwidget)
         self.lable_repair.setText("Работы:")
-        self.layout.addWidget(self.lable_repair, 0, 2)
-        self.repair = QtWidgets.QTextEdit(self.centralwidget)
-        self.layout.addWidget(self.repair, 1, 2, 1, 3)
+        self.layout.addWidget(self.lable_repair, 2, 0)
+        self.repair = QtWidgets.QLineEdit(self.centralwidget)
+        self.layout.addWidget(self.repair, 3, 0, 1, 4)
 
         self.lable_type_of_repair = QtWidgets.QLabel(self.centralwidget)
         self.lable_type_of_repair.setText("Тип работ:")
-        self.layout.addWidget(self.lable_type_of_repair, 2, 0)
+        self.layout.addWidget(self.lable_type_of_repair, 4, 0)
         self.lable_type_of_repair.setFixedHeight(15)
         self.type_of_repair = QtWidgets.QComboBox(self.centralwidget)
 
 
         self.lable_status = QtWidgets.QLabel(self.centralwidget)
         self.lable_status.setText("Статус:")
-        self.layout.addWidget(self.lable_status, 2, 1)
+        self.layout.addWidget(self.lable_status, 4, 1)
         self.status = QtWidgets.QComboBox(self.centralwidget)
 
 
         self.lable_repairman = QtWidgets.QLabel(self.centralwidget)
         self.lable_repairman.setText("Выполнил:")
-        self.layout.addWidget(self.lable_repairman, 2, 2)
+        self.layout.addWidget(self.lable_repairman, 4, 2)
         self.repairman = QtWidgets.QLineEdit(self.centralwidget)
 
 
         self.lable_date = QtWidgets.QLabel(self.centralwidget)
         self.lable_date.setText("Дата:")
-        self.layout.addWidget(self.lable_date, 2, 3)
+        self.layout.addWidget(self.lable_date, 4, 3)
         self.date = QDateEdit(self.centralwidget)
         self.date.setDisplayFormat("yyyy-MM-dd")
         self.date.setDate(QtCore.QDate.currentDate())
-        self.layout.addWidget(self.date, 3, 3)
+        self.layout.addWidget(self.date, 5, 3)
 
         self.btn_cansel = QtWidgets.QPushButton(self.centralwidget)
         self.btn_cansel.setText("Отмена")
         self.btn_cansel.clicked.connect(self.cansel)
-        self.layout.addWidget(self.btn_cansel, 4, 0, 4, 2)
+        self.layout.addWidget(self.btn_cansel, 7, 0, 4, 2)
         self.btn_cansel.setFixedHeight(23)
 
         self.btn_add = QtWidgets.QPushButton(self.centralwidget)
         self.btn_add.setText("Добавить запись")
         self.btn_add.clicked.connect(self.add_entry)
-        self.layout.addWidget(self.btn_add, 4, 2, 4, 3)
+        self.layout.addWidget(self.btn_add, 7, 2, 4, 3)
 
         try:
             con = psycopg2.connect(
@@ -1467,6 +1737,32 @@ class Entry_Window(QMainWindow):
                     name = str(name.replace(*r))
                 self.setWindowTitle(f'Добавить запись к {name}')
 
+                #"""Ошибка"""
+
+                cur.execute("SELECT DISTINCT fault FROM repairs")
+                x = cur.fetchall()
+                # print(x)
+                x = ','.join(map(str, x))
+                # print(x)
+                for r in (('(', ''), (',)', ''), ("'", '')):
+                    x = x.replace(*r)
+                # print(x.split(','))
+                completer_fault = QCompleter(x.split(','))
+                self.fault.setCompleter(completer_fault)
+
+                #"""Работы"""
+
+                cur.execute("SELECT DISTINCT repair FROM repairs")
+                x = cur.fetchall()
+                # print(x)
+                x = ',,'.join(map(str, x))
+                print(x)
+                for r in (('(', ''), (',)', ''), ("'", '')):
+                    x = x.replace(*r)
+                # print(x.split(','))
+                completer_repair = QCompleter(x.split(',,'))
+                self.repair.setCompleter(completer_repair)
+
                 #"""Тип работ"""
 
                 cur.execute(
@@ -1478,7 +1774,7 @@ class Entry_Window(QMainWindow):
                     type_of_repair = str(type_of_repair.replace(*r))
                 #print(type_of_repair)
                 self.type_of_repair.addItems(type_of_repair.split(','))
-                self.layout.addWidget(self.type_of_repair, 3, 0)
+                self.layout.addWidget(self.type_of_repair, 5, 0)
 
                 #"""Статус"""
 
@@ -1492,13 +1788,12 @@ class Entry_Window(QMainWindow):
                     status = str(status.replace(*r))
                 #print(type_of_repair)
                 self.status.addItems(status.split(','))
-                self.layout.addWidget(self.status, 3, 1)
+                self.layout.addWidget(self.status, 5, 1)
 
                 #"""Инженер"""
 
                 cur.execute(
                     "SELECT name FROM repairmans "
-
                 )
                 repairmain = cur.fetchall()
                 repairmain = ','.join(map(str, repairmain))
@@ -1516,7 +1811,8 @@ class Entry_Window(QMainWindow):
                 self.repairman.setCompleter(completer)
                 completer.setCaseSensitivity(QtCore.Qt.CaseInsensitive)
                 self.repairman.setText(f"{str(repairmain)}")
-                self.layout.addWidget(self.repairman, 3, 2)
+                self.layout.addWidget(self.repairman, 5, 2)
+
 
 
         except IndexError:
@@ -1584,7 +1880,15 @@ class Entry_Window(QMainWindow):
                     cur.execute(
                         f"INSERT INTO repairs ( "
                         f"id, fault, repair, date, status_id, equipments_id, repairman, types_of_repairs_id) "
-                        f"VALUES (DEFAULT, '{str(self.fault.toPlainText())}', '{str(self.repair.toPlainText())}', '{str(self.date.text())}',  '{id_status}', '{index}', '{str(self.repairman.text())}', '{id_type_of_repair}')"
+                        f"VALUES (DEFAULT, '{str(self.fault.text())}', '{str(self.repair.text())}', '{str(self.date.text())}',  '{id_status}', '{index}', '{str(self.repairman.text())}', '{id_type_of_repair}') "
+                    )
+
+                    """Добавление в оборудование"""
+                    cur.execute(
+                        f"UPDATE equipments "
+                        f"SET status_id = '{id_status}' "
+                        f"FROM status "
+                        f"WHERE status.id = equipments.status_id AND equipments.id = {str(index)}"
                     )
                     #print(f"Ошибка: {str(self.fault.setPlainText())}, Ремонт: {str(self.repair.setPlainText())}, Дата: {str(self.date.text())}, Инженер: {str(self.repairman.text())}")
                     con.commit()
@@ -1621,9 +1925,20 @@ class Entry_Window(QMainWindow):
                 con.close()
 
 
+#"""ЛОГОТИП"""
+def resource_path(relative_path):
+    try:
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.abspath(".")
+
+    return os.path.join(base_path, relative_path)
+
+
+
 if __name__ == "__main__":
     import sys
     app = QApplication(sys.argv)
-    main_window = Main_Window()
-    main_window.show()
+    settings_window = Settings_Window(config)
+    settings_window.show()
     sys.exit(app.exec_())
