@@ -6,10 +6,12 @@ import io
 import textwrap
 
 from appdirs import user_config_dir
+from psycopg2 import OperationalError
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtWidgets import *
-from PyQt5.QtCore import Qt, QTimer
+from PyQt5.QtCore import Qt, QTimer, pyqtSignal, QObject
+from PyQt5.QtGui import QColor
 
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
@@ -237,6 +239,18 @@ class Settings_Window(QMainWindow):
                     self.main_window.show()
                     self.close()
 
+        except OperationalError as e:
+            # Показываем сообщение об ошибке подключения
+            QMessageBox.critical(
+                self,
+                "Ошибка подключения",
+                "Сервер недоступен\n\n"
+                "Проверьте:\n"
+                "1. Доступность сервера в сети\n"
+                "2. Настройки подключения\n"
+                "3. Работает ли PostgreSQL на сервере"
+            )
+            print(f'Ошибка подключения: {e}')
         except Exception as e:
             error = QMessageBox()
             error.setWindowTitle("Ошибка")
@@ -275,7 +289,7 @@ class Settings_Window(QMainWindow):
 
         save_message = QMessageBox()
         save_message.setWindowTitle("Изменение")
-        save_message.setText("Изменить данные?")
+        save_message.setText("Изменить настройки?")
         save_message.setIcon(QMessageBox.Question)
         save_message.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
         save_message.exec_()
@@ -297,7 +311,15 @@ class Settings_Window(QMainWindow):
             # Сохраняем изменения в файл
             with open(config_path, "w", encoding="utf-8") as f:
                 json.dump(config, f, indent=4)
-            updated_config = load_config()
+            global host, port, db_name, user, password
+            host = self.config["host"]
+            port = self.config["port"]
+            db_name = self.config["db_name"]
+            user = self.config["user"]
+            password = self.config["password"]
+
+            # Закрываем текущее окно настроек
+            #self.close()
             change_message = QMessageBox()
             change_message.setWindowTitle("Успешно")
             change_message.setText("Данные изменены")
@@ -305,7 +327,8 @@ class Settings_Window(QMainWindow):
             change_message.setStandardButtons(QMessageBox.Ok)
             change_message.exec_()
             print('УСПЕШНО ИЗМЕНЕНО!')
-            os.execl(sys.executable, sys.executable, *sys.argv)
+            new_login_window = Settings_Window(self.config)
+            new_login_window.show()
         else:
             print('ОТМЕНА')
             change_message = QMessageBox()
@@ -339,7 +362,7 @@ class Main_Window(QMainWindow):
         #"""ТАЙМЕР ДЛЯ ТАБЛИЦЫ"""
         self.resize_timer = QTimer()  # Таймер для отложенного пересчета
         self.resize_timer.setSingleShot(True)  # Таймер сработает только один раз
-        self.resize_timer.timeout.connect(self.resize_rows_to_contents_table)
+        self.resize_timer.timeout.connect(lambda: self.resize_rows_to_contents_tables(self.table))
 
 
         #"""ПОИСК"""
@@ -367,7 +390,7 @@ class Main_Window(QMainWindow):
         #"""ТАБЛИЦА"""
         self.table = QtWidgets.QTableWidget(self.search_groupe)
         self.table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
-        self.table.itemDoubleClicked.connect(self.equipment_show)
+        self.table.itemDoubleClicked.connect(lambda: self.equipment_show(self.table))
         self.search = QtWidgets.QLineEdit(self.search_groupe)
 
         self.search_for_what = QtWidgets.QComboBox(self.search_groupe)
@@ -482,7 +505,7 @@ class Main_Window(QMainWindow):
         #"""ТАЙМЕР ДЛЯ ТАБЛИЦЫ РЕМОНТОВ"""
         self.resize_timer_repair = QTimer()  # Таймер для отложенного пересчета
         self.resize_timer_repair.setSingleShot(True)  # Таймер сработает только один раз
-        self.resize_timer_repair.timeout.connect(self.resize_rows_to_contents_table_repair)
+        self.resize_timer_repair.timeout.connect(lambda: self.resize_rows_to_contents_tables(self.table_repair))
 
         #"""КНОПКА ПОИСКА РЕМОНТОВ"""
         self.btn_search_repair = QtWidgets.QPushButton(self.tab_repairs)
@@ -510,7 +533,7 @@ class Main_Window(QMainWindow):
         #"""СТРОКА ДЛЯ ВВОДА"""
         self.search_repair = QtWidgets.QLineEdit(self.tab_repairs)
         self.search_repair.setEnabled(False)
-        self.table_repair.itemDoubleClicked.connect(self.equipment_show_repair)
+        self.table_repair.itemDoubleClicked.connect(lambda: self.equipment_show(self.table_repair))
 
         #"""КНОПКА ОЧИСТИТЬ"""
         self.btn_clear_repair = QtWidgets.QPushButton(self.search_groupe)
@@ -535,10 +558,12 @@ class Main_Window(QMainWindow):
         self.layout_2.addWidget(self.btn_save_repair, 3, 0)
         self.layout_2.addWidget(self.btn_clear_repair, 3, 4)
 
+        #"""ЗАКРЫТИЕ Equipment_Window"""
+        #self.equipment_window.closed.connect(self.update_on_close)
+
         self.add_all()
         self.start_search()
         self.start_search_repair()
-
 
 
     #"""Настройка добавления оборудования"""
@@ -584,6 +609,18 @@ class Main_Window(QMainWindow):
                     completer = QCompleter(x.split(','))
                     self.add_name.setCompleter(completer)
                     completer.setCaseSensitivity(QtCore.Qt.CaseInsensitive)
+            except OperationalError as e:
+                # Показываем сообщение об ошибке подключения
+                QMessageBox.critical(
+                    self,
+                    "Ошибка подключения",
+                    "Сервер недоступен\n\n"
+                    "Проверьте:\n"
+                    "1. Доступность сервера в сети\n"
+                    "2. Настройки подключения\n"
+                    "3. Работает ли PostgreSQL на сервере"
+                )
+                print(f'Ошибка подключения: {e}')
 
             except Exception as e:
                 error = QMessageBox()
@@ -643,6 +680,7 @@ class Main_Window(QMainWindow):
 
     #"""Кнопка Поиска"""
     def start_search(self):
+        #print('Создание таблицы 1')
         self.table.clearContents()
         self.table.clear()
         try:
@@ -655,7 +693,7 @@ class Main_Window(QMainWindow):
             with con.cursor() as cur:
                 #"""Кнопка поиска без фильтров"""
                 if self.search_for_what.currentText() == 'Всё':
-
+                    #print('Всё')
                     cur.execute(
                         "SELECT equipments.id, streets.street, address.room, types.type, names.name, names.sn, names.date, status.status "
                         "FROM equipments "
@@ -744,15 +782,16 @@ class Main_Window(QMainWindow):
                 if not admin:
                     self.table.hideColumn(0)
                 self.table.resizeColumnsToContents()
-                self.table.horizontalHeader().sectionResized.connect(self.start_resize_timer)
+                self.table.horizontalHeader().sectionResized.connect(lambda: self.start_resize_timer(self.resize_timer))
                 self.table.horizontalHeader().setMaximumSectionSize(200)
                 self.table.horizontalHeader().setSectionResizeMode(3, QHeaderView.Stretch)
                 self.table.horizontalHeader().setSectionResizeMode(4, QHeaderView.Stretch)
                 self.table.sortByColumn(1, QtCore.Qt.AscendingOrder)
                 self.table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
                 self.btn_save.setEnabled(True)
-        except IndexError:
-            pass
+                self.status_row_colors(self.table)
+
+
         except Exception as e:
             error = QMessageBox()
             error.setWindowTitle("Ошибка")
@@ -1323,11 +1362,12 @@ class Main_Window(QMainWindow):
                     self.table.hideColumn(0)
                 self.table_repair.sortByColumn(1, QtCore.Qt.DescendingOrder)
                 self.table_repair.resizeColumnsToContents()
-                self.table_repair.horizontalHeader().sectionResized.connect(self.start_resize_timer_repair)
+                self.table_repair.horizontalHeader().sectionResized.connect(lambda: self.start_resize_timer(self.resize_timer_repair))
                 self.table_repair.horizontalHeader().setMaximumSectionSize(130)
-                self.table_repair.horizontalHeader().setSectionResizeMode(8, QHeaderView.Stretch)
-                self.table_repair.horizontalHeader().setSectionResizeMode(9, QHeaderView.Stretch)
+                self.table_repair.horizontalHeader().setSectionResizeMode(3, QHeaderView.Stretch)
+                self.table_repair.horizontalHeader().setSectionResizeMode(10, QHeaderView.Stretch)
                 self.table_repair.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
+                self.status_row_colors(self.table_repair)
 
 
                 self.btn_save.setEnabled(True)
@@ -1343,49 +1383,64 @@ class Main_Window(QMainWindow):
             print(f'Ошибка {e}')
             error.exec_()
 
-    #"""Таймер Для Пересчета Таблицы"""
-    def start_resize_timer(self):
-        self.resize_timer.start(150)
+    #"""Таймер Для Пересчета Таблиц"""
+    def start_resize_timer(self, resize_timer):
+        resize_timer.start(1)
 
-    #"""Таймер Для Пересчета Таблицы"""
-    def start_resize_timer_repair(self):
-        self.resize_timer_repair.start(50)
-
-    #"""Пересчет Таблицы"""
-    def resize_rows_to_contents_table(self):
-        self.table.setUpdatesEnabled(False)  # Отключаем обновление
-        self.table.resizeRowsToContents()  # Пересчитываем высоту строк
-        self.table.setUpdatesEnabled(True)  # Включаем обновление
-
-    #"""Пересчет Таблицы Ремонтов"""
-    def resize_rows_to_contents_table_repair(self):
-        self.table_repair.setUpdatesEnabled(False)  # Отключаем обновление
-        self.table_repair.resizeRowsToContents()  # Пересчитываем высоту строк
-        self.table_repair.setUpdatesEnabled(True)  # Включаем обновление
+    #"""Пересчет Таблиц"""
+    def resize_rows_to_contents_tables(self, table):
+        table.setUpdatesEnabled(False)  # Отключаем обновление
+        table.resizeRowsToContents()  # Пересчитываем высоту строк
+        table.setUpdatesEnabled(True)  # Включаем обновление
 
     #"""Показать Данные Оборудования"""
-    def equipment_show(self):
+    def equipment_show(self, table):
 
-        row = self.table.currentIndex().row()
+        row = table.currentIndex().row()
         global index
-        index = self.table.model().index(row, 0).data()
+        index = table.model().index(row, 0).data()
         print(index)
         self.equipment_window = Equipment_Window()
+        self.equipment_window.closed.connect(self.start_search)
         self.equipment_window.show()
 
-    #"""Показать Данные Оборудования В Таблице Ремонта"""
-    def equipment_show_repair(self):
+    #"""Красим табличку"""
+    def status_row_colors(self, table):
+        for row in range(table.rowCount()):
+            for col in range(table.columnCount()):
+                item = table.item(row, col)
+                if item and item.text() == "Списано":
+                    # Окрашиваем всю строку
+                    for c in range(table.columnCount()):
+                        cell = table.item(row, c) or QTableWidgetItem()
+                        cell.setBackground(QColor(255, 235, 235))
+                    break
+                elif item and item.text() == "Исправно":
+                    # Окрашиваем всю строку
+                    for c in range(table.columnCount()):
+                        cell = table.item(row, c) or QTableWidgetItem()
+                        cell.setBackground(QColor(235, 255, 235))
+                    break
+                elif item and item.text() == "Неисправно":
+                    # Окрашиваем всю строку
+                    for c in range(table.columnCount()):
+                        cell = table.item(row, c) or QTableWidgetItem()
+                        cell.setBackground(QColor(255, 255, 235))
+                    break
+                elif item and item.text() == "Ввод в эксплуатацию":
+                    # Окрашиваем всю строку
+                    for c in range(table.columnCount()):
+                        cell = table.item(row, c) or QTableWidgetItem()
+                        cell.setBackground(QColor(235, 235, 255))
+                    break
 
-        row = self.table_repair.currentIndex().row()
-        global index
-        index = self.table_repair.model().index(row, 0).data()
-        print(index)
-        self.equipment_window = Equipment_Window()
-        self.equipment_window.show()
 
 
 #"""Информационное окно"""
 class Equipment_Window(QMainWindow):
+    #"""Сигнал закрытия окна"""
+    closed = pyqtSignal()
+
     def __init__(self):
         super(Equipment_Window, self).__init__()
         self.resize(715, 450)
@@ -1394,6 +1449,7 @@ class Equipment_Window(QMainWindow):
         self.setWindowIcon(QtGui.QIcon(resource_path('logo.png')))
         self.centralwidget.setFont(QtGui.QFont("Times", 10))
         self.layout = QGridLayout(self.centralwidget)
+        self.entry_window = None
 
         self.lable_address = QtWidgets.QLabel(self.centralwidget)
         self.lable_address.setText("Адрес:")
@@ -1462,10 +1518,13 @@ class Equipment_Window(QMainWindow):
         self.btn_add.setText("Добавить запись")
         self.btn_add.clicked.connect(self.add_entry)
         self.layout.addWidget(self.btn_add, 12, 3)
+        self.main_window = Main_Window()
+
+        self.info()
         if not admin:
             self.btn_add.setEnabled(False)
 
-
+    def info(self):
         try:
             con = psycopg2.connect(
                 host=host,
@@ -1636,7 +1695,7 @@ class Equipment_Window(QMainWindow):
                 #"""РЕМОНТЫ"""
 
                 cur.execute(
-                    "SELECT repairs.date, repairs.fault, repairs.repair,  types_of_repairs.type_of_repair, status.status, repairs.repairman "
+                    "SELECT repairs.id, repairs.date, repairs.fault, repairs.repair,  types_of_repairs.type_of_repair, status.status, repairs.repairman "
                     "FROM repairs "
                     "INNER JOIN equipments ON equipments.id = repairs.equipments_id "
                     "INNER JOIN status ON status.id = repairs.status_id "
@@ -1655,14 +1714,14 @@ class Equipment_Window(QMainWindow):
                         item = QtWidgets.QTableWidgetItem(str(data[j][i]))
                         self.table.setItem(j, i, item)
                 self.table.setHorizontalHeaderLabels(
-                    ['Дата', 'Неисправность',
+                    ['Id', 'Дата', 'Неисправность',
                      'Работы', 'Тип работ', 'Статус', 'Выполнил'])
                 self.table.setSortingEnabled(True)
                 self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
                 self.table.verticalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
                 self.table.horizontalHeader().setMaximumSectionSize(200)
-                self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
                 self.table.horizontalHeader().setSectionResizeMode(2, QHeaderView.Stretch)
+                self.table.horizontalHeader().setSectionResizeMode(3, QHeaderView.Stretch)
                 self.table.sortByColumn(0, QtCore.Qt.DescendingOrder)
 
                 self.table.resizeColumnsToContents()
@@ -1682,6 +1741,7 @@ class Equipment_Window(QMainWindow):
         finally:
             pass
 
+    #"""Изменить значения"""
     def change_equipment(self):
         self.address.setEnabled(True)
         self.room.setEnabled(True)
@@ -1694,6 +1754,7 @@ class Equipment_Window(QMainWindow):
         self.btn_cancel.setEnabled(True)
         self.btn_change.setEnabled(False)
 
+    #"""Инфа о кабинете"""
     def room_info(self):
         try:
             con = psycopg2.connect(
@@ -1738,6 +1799,7 @@ class Equipment_Window(QMainWindow):
         finally:
             pass
 
+    #"""Сохранить изменения"""
     def save_change(self):
         try:
             con = psycopg2.connect(
@@ -1873,6 +1935,7 @@ class Equipment_Window(QMainWindow):
         finally:
             pass
 
+    #"""Отмена"""
     def cancel(self):
         self.btn_change.setEnabled(True)
         self.btn_save.setEnabled(False)
@@ -1885,14 +1948,29 @@ class Equipment_Window(QMainWindow):
         self.date.setEnabled(False)
         self.status.setEnabled(False)
 
+    #"""Добавить записть"""
     def add_entry(self):
         global index
         print(index)
-        self.Entry_Window = Entry_Window()
-        self.Entry_Window.show()
+        if self.entry_window is None:
+            self.entry_window = Entry_Window()
+            self.entry_window.closed.connect(self.info)
+        self.entry_window.show()
+
+    #"""Запуск сигнала о закрытии"""
+    def closeEvent(self, event):
+        print("Закрытие'Equipment_Window'")
+        self.closed.emit()  # Испускаем сигнал при закрытии
+        self.close()
+        super().closeEvent(event)
+        self.main_window.start_search()
+        self.main_window.start_search_repair()
 
 
 class Entry_Window(QMainWindow):
+    #"""Сигнал закрытия окна"""
+    closed = pyqtSignal()
+
     def __init__(self):
         super(Entry_Window, self).__init__()
         self.centralwidget = QtWidgets.QWidget(self)
@@ -2338,7 +2416,7 @@ class Entry_Window(QMainWindow):
                         draw_wrapped_text(self.can, self.fault.text(), 40, 292, 90, 13)
                     elif self.status.currentText() == "Списано":
                         self.can.drawString(28, 307, "✓")
-                        self.can.drawString(415, 215, "✓")
+                        self.can.drawString(416, 215, "✓")
                         self.can.setFont('Times', 12)
                         draw_wrapped_text(self.can, self.fault.text(), 40, 292, 90, 13)
                     self.can.setFont('Times', 12)
@@ -2377,6 +2455,11 @@ class Entry_Window(QMainWindow):
 
     def open_pdf(self, file_path):
         os.startfile(file_path)
+
+    def closeEvent(self, event):
+        print("Закрытие 'Entry_Window'")
+        self.closed.emit()  # Разкомментируйте эту строку
+        super().closeEvent(event)
 
 
 
