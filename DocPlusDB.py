@@ -59,7 +59,7 @@ db_name = config["db_name"]
 port = config["port"]
 
 # Версия
-current_version = "2.1.0"
+current_version = "2.1.1"
 # Права админа
 admin = None
 
@@ -111,12 +111,12 @@ class AutoUpdater(QMainWindow):
     def check_for_update(self):
 
         try:
-            self.remote_version = requests.get(f"{self.github_raw_url}/version.txt", timeout=5).text.strip()
-            if self.remote_version != self.current_version:
-                self.lable_update.setText(f"Найдена новая версия ({self.remote_version})!\n"
+            remote_version = requests.get(f"{self.github_raw_url}/version.txt", timeout=5).text.strip()
+            if remote_version != self.current_version:
+                self.lable_update.setText(f"Найдена новая версия ({remote_version})!\n"
                                    f"Ваша версия {current_version}\n"
                                    f"Обновить?")
-                print(f"Найдена новая версия:{self.remote_version}/{current_version}")
+                print(f"Найдена новая версия:{remote_version}/{current_version}")
                 self.show()
             else:
                 print("Установлена последняя версия.")
