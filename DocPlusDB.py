@@ -4,6 +4,8 @@ import xlwt
 import json
 import io
 import textwrap
+import requests
+import subprocess
 import time
 
 from appdirs import user_config_dir
@@ -56,7 +58,121 @@ password = config["password"]
 db_name = config["db_name"]
 port = config["port"]
 
+# Версия
+current_version = "2.1.0"
+# Права админа
 admin = None
+
+#"""Автообновление"""
+class AutoUpdater(QMainWindow):
+    def __init__(self, current_version, local_exe="DocPlusDB.exe", new_exe="DocPlusDB_new.exe"):
+        super(AutoUpdater, self).__init__()
+        self.github_raw_url = "https://raw.githubusercontent.com/GarvelLoken1/DocPlusDB/main"
+        self.current_version = current_version
+        self.local_exe = local_exe
+        self.new_exe = new_exe
+
+        # """Для ошибок"""
+        self.show_error = Show_Error()
+
+        self.setFixedSize(250, 130)
+        self.centralwidget = QtWidgets.QWidget()
+        self.setCentralWidget(self.centralwidget)
+        self.setWindowTitle('Обновление')
+        self.setWindowIcon(QtGui.QIcon(resource_path('logo.png')))
+        self.font = QtGui.QFont("Times", 10)
+        self.centralwidget.setFont(self.font)
+        self.layout = QGridLayout(self.centralwidget)
+
+        # Текст
+        self.lable_update = QLabel()
+        self.layout.addWidget(self.lable_update, 0, 0, 1, 2)
+
+        # Прогрессбар
+        self.progress_bar = QtWidgets.QProgressBar()
+        self.progress_bar.setRange(0, 100)
+        self.layout.addWidget(self.progress_bar, 1, 0, 1, 2)
+
+        # Кнопка "Подключиться"
+        self.btn_update = QPushButton("Обновить")
+        self.btn_update.clicked.connect(self.download_and_replace)
+        self.layout.addWidget(self.btn_update, 2, 0, 1, 1)
+
+        # Кнопка "Отмена"
+        self.btn_cancel = QPushButton("Отмена")
+        self.btn_cancel.clicked.connect(self.cancel)
+        self.layout.addWidget(self.btn_cancel, 2, 1, 1, 1)
+
+
+    def cancel(self):
+        self.close()
+
+    #"""Проверка версии и запуск обновления"""
+    def check_for_update(self):
+
+        try:
+            self.remote_version = requests.get(f"{self.github_raw_url}/version.txt", timeout=5).text.strip()
+            if self.remote_version != self.current_version:
+                self.lable_update.setText(f"Найдена новая версия ({self.remote_version})!\n"
+                                   f"Ваша версия {current_version}\n"
+                                   f"Обновить?")
+                print(f"Найдена новая версия:{self.remote_version}/{current_version}")
+                self.show()
+            else:
+                print("Установлена последняя версия.")
+                self.close()
+        except Exception as e:
+            self.show_error.show_error(e)
+
+    #"""Скачивание новой версии и запуск"""
+    def download_and_replace(self):
+        try:
+            self.lable_update.setText("Скачивание новой версии...")
+            print("Скачивание новой версии...")
+            self.btn_update.setEnabled(False)
+            self.btn_cancel.setEnabled(False)
+            exe_url = f"https://github.com/GarvelLoken1/DocPlusDB/releases/latest/download/DocPlusDB.exe"
+            with requests.get(exe_url, stream=True, timeout=10) as r:
+                r.raise_for_status()
+                total_length = int(r.headers.get('content-length', 0))
+                downloaded = 0
+
+                with open(self.new_exe, 'wb') as f:
+                    for chunk in r.iter_content(chunk_size=8192):
+                        f.write(chunk)
+                        downloaded += len(chunk)
+                        percent = int((downloaded / total_length) * 100)
+                        self.progress_bar.setValue(percent)
+                        QtWidgets.QApplication.processEvents()  # обновить GUI
+            print("Перезагрузка...")
+            subprocess.Popen([self.new_exe])
+            sys.exit()
+        except Exception as e:
+            self.show_error.show_error(e)
+
+    #"""Заменяет старую версию новой и перезапускает"""
+    def finalize_update(self):
+        try:
+            time.sleep(1)
+            if os.path.exists(self.local_exe):
+                os.remove(self.local_exe)
+            os.rename(self.new_exe, self.local_exe)
+            print("Обновление завершено. Перезапуск...")
+            subprocess.Popen([self.local_exe])
+            sys.exit()
+        except Exception as e:
+            self.show_error.show_error(e)
+
+    #"""Проверка имени файла для переименования"""
+    def run(self):
+
+        if getattr(sys, 'frozen', False):
+            if os.path.basename(sys.executable) == self.new_exe:
+                self.finalize_update()
+            else:
+                self.check_for_update()
+        else:
+            self.check_for_update()
 
 #"""Окно настроек"""
 class Settings_Window(QMainWindow):
@@ -351,7 +467,7 @@ class Main_Window(QMainWindow):
         self.tab_repairs = QtWidgets.QWidget()
         self.tabs.addTab(self.tab_items, 'Оборудование')
         self.tabs.addTab(self.tab_repairs, 'Журнал')
-        self.statusBar().showMessage("Версия 2.0.0 | © Максименко Н.А. | 2025")
+        self.statusBar().showMessage(f"Версия {current_version} | © Максименко Н.А. | 2025")
 
         #"""Для ошибок"""
         self.show_error = Show_Error()
@@ -2721,6 +2837,7 @@ class Show_Error(QObject):
         self.style = QtWidgets.QApplication.style()
         self.icon = self.style.standardIcon(QtWidgets.QStyle.SP_MessageBoxWarning)
         self.error.setWindowIcon(self.icon)
+
     def show_error(self, e):
         #print(e)
         if isinstance(e, IndexError):
@@ -2778,5 +2895,7 @@ if __name__ == "__main__":
     import sys
     app = QApplication(sys.argv)
     settings_window = Settings_Window(config)
+    autoupdater = AutoUpdater(current_version)
     settings_window.show()
+    autoupdater.run()
     sys.exit(app.exec_())
