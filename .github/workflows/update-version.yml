@@ -9,22 +9,22 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v3
         with:
-          persist-credentials: false
-          ref: main 
+          fetch-depth: 0  # нужен полный fetch, чтобы видеть все ветки
 
       - name: Update version.txt
         run: echo "${GITHUB_REF#refs/tags/}" > version.txt
 
-      - name: Commit and push version.txt
+      - name: Commit and push
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
-          git remote set-url origin https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}
+          git checkout main  # <-- переключаемся на основную ветку (ИЗМЕНИТЕ если у вас master)
+          git pull origin main
           git add version.txt
-          git commit -m "Update version.txt to ${GITHUB_REF#refs/tags/}"
+          git commit -m "Update version.txt to ${GITHUB_REF#refs/tags/}" || echo "No changes"
           git push origin main
