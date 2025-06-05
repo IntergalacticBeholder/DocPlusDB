@@ -9,13 +9,18 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code from main
+      - name: Checkout code
         uses: actions/checkout@v3
         with:
-          fetch-depth: 0
-          ref: main  # <--- обязательно checkout не тега, а main
+          fetch-depth: 0  # нужно, чтобы были все ветки
+          token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract version from tag
+      - name: Switch to main
+        run: |
+          git fetch origin main
+          git checkout main
+
+      - name: Update version.txt
         run: echo "${GITHUB_REF#refs/tags/}" > version.txt
 
       - name: Commit and push version.txt
@@ -23,5 +28,5 @@ jobs:
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
           git add version.txt
-          git commit -m "Update version.txt to ${GITHUB_REF#refs/tags/}" || echo "No changes to commit"
+          git commit -m "Update version.txt to ${GITHUB_REF#refs/tags/}" || echo "No changes"
           git push origin main
