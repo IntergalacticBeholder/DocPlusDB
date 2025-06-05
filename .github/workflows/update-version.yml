@@ -12,11 +12,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
         with:
-          persist-credentials: false  # отключаем авто-учётку, чтобы задать вручную
+          persist-credentials: false
+          ref: main 
 
       - name: Update version.txt
-        run: |
-          echo "${GITHUB_REF#refs/tags/}" > version.txt
+        run: echo "${GITHUB_REF#refs/tags/}" > version.txt
 
       - name: Commit and push version.txt
         env:
@@ -27,4 +27,4 @@ jobs:
           git remote set-url origin https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}
           git add version.txt
           git commit -m "Update version.txt to ${GITHUB_REF#refs/tags/}"
-          git push origin HEAD:main
+          git push origin main
