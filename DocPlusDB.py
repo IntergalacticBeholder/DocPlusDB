@@ -59,7 +59,7 @@ db_name = config["db_name"]
 port = config["port"]
 
 # Версия
-current_version = "2.1.1"
+current_version = "2.2.0"
 # Права админа
 admin = None
 
@@ -67,7 +67,7 @@ admin = None
 class AutoUpdater(QMainWindow):
     def __init__(self, current_version, local_exe="DocPlusDB.exe", new_exe="DocPlusDB_new.exe"):
         super(AutoUpdater, self).__init__()
-        self.github_raw_url = "https://raw.githubusercontent.com/GarvelLoken1/DocPlusDB/main"
+        self.github_raw_url = "https://raw.githubusercontent.com/IntergalacticBeholder/DocPlusDB/main"
         self.current_version = current_version
         self.local_exe = local_exe
         self.new_exe = new_exe
@@ -90,6 +90,7 @@ class AutoUpdater(QMainWindow):
 
         # Прогрессбар
         self.progress_bar = QtWidgets.QProgressBar()
+        self.progress_bar.setAlignment(Qt.AlignCenter)
         self.progress_bar.setRange(0, 100)
         self.layout.addWidget(self.progress_bar, 1, 0, 1, 2)
 
@@ -112,9 +113,9 @@ class AutoUpdater(QMainWindow):
 
         try:
             remote_version = requests.get(f"{self.github_raw_url}/version.txt", timeout=5).text.strip()
-            if remote_version != self.current_version:
-                self.lable_update.setText(f"Найдена новая версия ({remote_version})!\n"
-                                   f"Ваша версия {current_version}\n"
+            if remote_version > self.current_version:
+                self.lable_update.setText(f"Найдена новая версия {remote_version}!\n"
+                                   f"Ваша версия - {current_version}\n"
                                    f"Обновить?")
                 print(f"Найдена новая версия:{remote_version}/{current_version}")
                 self.show()
@@ -621,8 +622,8 @@ class Main_Window(QMainWindow):
         self.add_lable_type.setText('Оборудование:')
         self.add_CB_type = QtWidgets.QComboBox(self.add_groupe)
         self.add_CB_type.setFixedWidth(350)
-        self.add_CB_type.currentTextChanged.connect(lambda: self.sfw2(
-            self.search, self.search_for_what, self.search_for_what2, self.search_for_what3, self.btn_more_filters))
+        # self.add_CB_type.currentTextChanged.connect(lambda: self.sfw2(
+        #     self.search, self.search_for_what, self.search_for_what2, self.search_for_what3, self.btn_more_filters))
 
         #"""Добавить тип оборудования"""
         self.btn_more_types = QtWidgets.QPushButton(self.search_groupe)
@@ -800,6 +801,7 @@ class Main_Window(QMainWindow):
 
         self.add_all()
         self.add_type_update()
+        self.sfw2(self.search, self.search_for_what, self.search_for_what2, self.search_for_what3, self.btn_more_filters)
         self.start_search(self.table, self.search_for_what, self.search_for_what2,
                                    self.search_for_what3, self.search_for_what4, self.search_for_what5,
                                    self.search_for_what6,
@@ -827,23 +829,15 @@ class Main_Window(QMainWindow):
 
                     #"""Выбор Улицы"""
                     cur.execute("SELECT street FROM streets")
-                    x = cur.fetchall()
-                    x = ',,'.join(map(str, x))
-                    for r in (('(', ''), (',)', ''), ("'", '')):
-                        x = x.replace(*r)
-                    #print(x.split(','))
-                    self.add_CB_address.addItems(x.split(',,'))
+                    streets = cur.fetchall()
+                    streets = [street[0] for street in streets]
+                    self.add_CB_address.addItems(streets)
 
                     #"""Имя"""
                     cur.execute("SELECT DISTINCT name FROM names")
-                    x = cur.fetchall()
-                    #print(x)
-                    x = ',,'.join(map(str, x))
-                    #print(x)
-                    for r in (('(', ''), (',)', ''), ("'", '')):
-                        x = x.replace(*r)
-                    #print(x.split(','))
-                    completer = QCompleter(x.split(',,'))
+                    names = cur.fetchall()
+                    names = [name[0] for name in names]
+                    completer = QCompleter(names)
                     self.add_name.setCompleter(completer)
                     completer.setCaseSensitivity(QtCore.Qt.CaseInsensitive)
 
@@ -871,16 +865,11 @@ class Main_Window(QMainWindow):
                         regexp_replace(room, '\\d+', '', 'g'),
                         CAST(NULLIF(regexp_replace(room, '\\D+', '', 'g'), '') AS INTEGER)
                         """,
-                            (
-                                self.add_CB_address.currentText(),
-                                )
+                            (self.add_CB_address.currentText(),)
                             )
-                x = cur.fetchall()
-                x = ',,'.join(map(str, x))
-                for r in (('(', ''), (',)', ''), ("'", '')):
-                    x = x.replace(*r)
-                # print(x.split(','))
-                self.add_CB_room.addItems(x.split(',,'))
+                rooms = cur.fetchall()
+                rooms = [room[0] for room in rooms]
+                self.add_CB_room.addItems(rooms)
         except Exception as e:
             self.show_error.show_error(e)
 
@@ -897,12 +886,9 @@ class Main_Window(QMainWindow):
             with con.cursor() as cur:
                 cur.execute("SELECT type FROM types "
                             "ORDER BY type ASC ")
-                x = cur.fetchall()
-                x = ',,'.join(map(str, x))
-                for r in (('(', ''), (',)', ''), ("'", '')):
-                    x = x.replace(*r)
-                # print(x.split(','))
-                self.add_CB_type.addItems(x.split(',,'))
+                types = cur.fetchall()
+                types = [type[0] for type in types]
+                self.add_CB_type.addItems(types)
         except Exception as e:
             self.show_error.show_error(e)
 
@@ -927,14 +913,14 @@ class Main_Window(QMainWindow):
                 if table == self.table:
                     query = f"""
                         SELECT equipments.id, streets.street, address.room, types.type, 
-                               names.name, names.sn, names.date, status.status 
+                               names.name, names.sn, names.date, COALESCE(rus.ru, '') AS ru, status.status 
                         FROM equipments 
                         INNER JOIN address ON address.id = equipments.address_id 
                         INNER JOIN types ON types.id = equipments.type_id 
                         INNER JOIN names ON names.id = equipments.name_id 
                         INNER JOIN status ON status.id = equipments.status_id 
+                        LEFT JOIN rus ON rus.id = equipments.ru_id 
                         INNER JOIN streets ON street_id = streets.id 
-                        
                     """
                 else:
                     query = f"""
@@ -1016,7 +1002,8 @@ class Main_Window(QMainWindow):
                 query += f"""
                         ORDER BY
                         regexp_replace(room, '\\d+', '', 'g'),
-                        CAST(NULLIF(regexp_replace(room, '\\D+', '', 'g'), '') AS INTEGER) """
+                        CAST(NULLIF(regexp_replace(room, '\\D+', '', 'g'), '') AS INTEGER) 
+                        """
                 #print(query)
                 cur.execute(query, tuple(params))
 
@@ -1035,7 +1022,7 @@ class Main_Window(QMainWindow):
                         table.setItem(j, i, item)
                 if table == self.table:
                     table.setHorizontalHeaderLabels(
-                        ['id', 'Адрес', 'Кабинет', 'Оборудование', 'Наименование', 'С/Н', 'Г/В', 'Статус'])
+                        ['id', 'Адрес', 'Кабинет', 'Оборудование', 'Наименование', 'С/Н', 'Г/В', 'Р/У', 'Статус'])
                     table.horizontalHeader().setMaximumSectionSize(200)
                     table.horizontalHeader().setSectionResizeMode(3, QHeaderView.Stretch)
                     table.horizontalHeader().setSectionResizeMode(4, QHeaderView.Stretch)
@@ -1095,15 +1082,9 @@ class Main_Window(QMainWindow):
                     search.clear()
                     btn_more_filters.setVisible(True)
                     cur.execute("SELECT street FROM streets")
-                    x = cur.fetchall()
-                    #print(x)
-                    x = ',,'.join(map(str, x))
-                    #print(x)
-                    for r in (('(', ''), (',)', ''), ("'", '')):
-                        x = x.replace(*r)
-                    #print(x.split(','))
-                    search_for_what_2.addItems(x.split(',,'))
-                    #self.sfw3()
+                    streets = cur.fetchall()
+                    streets = [street[0] for street in streets]
+                    search_for_what_2.addItems(streets)
 
                 #"""Поиск по типу"""
                 elif search_for_what.currentText() == 'По Оборудованию':
@@ -1116,13 +1097,9 @@ class Main_Window(QMainWindow):
                     btn_more_filters.setVisible(True)
                     cur.execute("SELECT type FROM types "
                                 "ORDER BY type ASC ")
-                    x = cur.fetchall()
-                    #print(x)
-                    x = ',,'.join(map(str, x))
-                    #print(x)
-                    for r in (('(', ''), (',)', ''), ("'", '')):
-                        x = x.replace(*r)
-                    search_for_what_2.addItems(x.split(',,'))
+                    types = cur.fetchall()
+                    types = [type[0] for type in types]
+                    search_for_what_2.addItems(types)
 
                 #"""Поиск по имени"""
                 elif search_for_what.currentText() == 'По Имени':
@@ -1134,16 +1111,11 @@ class Main_Window(QMainWindow):
                     search_for_what_3.clear()
                     btn_more_filters.setVisible(True)
                     cur.execute("SELECT DISTINCT name FROM names")
-                    x = cur.fetchall()
-                    #print(x)
-                    x = ',,'.join(map(str, x))
-                    #print(x)
-                    for r in (('(', ''), (',)', ''), ("'", '')):
-                        x = x.replace(*r)
-                    #print(x.split(','))
-                    completer = QCompleter(x.split(',,'))
-                    search.setCompleter(completer)
-                    completer.setCaseSensitivity(QtCore.Qt.CaseInsensitive)
+                    names = cur.fetchall()
+                    names = [name[0] for name in names]
+                    names_completer = QCompleter(names)
+                    search.setCompleter(names_completer)
+                    names_completer.setCaseSensitivity(QtCore.Qt.CaseInsensitive)
                     search_for_what_2.clear()
 
                 #"""По статусу"""
@@ -1158,13 +1130,9 @@ class Main_Window(QMainWindow):
                     btn_more_filters.setVisible(True)
                     cur.execute("SELECT status FROM status "
                                 "ORDER BY status ASC ")
-                    x = cur.fetchall()
-                    #print(x)
-                    x = ',,'.join(map(str, x))
-                    #print(x)
-                    for r in (('(', ''), (',)', ''), ("'", '')):
-                        x = x.replace(*r)
-                    search_for_what_2.addItems(x.split(',,'))
+                    statuses = cur.fetchall()
+                    statuses = [status[0] for status in statuses]
+                    search_for_what_2.addItems(statuses)
 
                 elif search_for_what.currentText() == 'По Типу Работ':
                     search.setEnabled(False)
@@ -1173,13 +1141,9 @@ class Main_Window(QMainWindow):
                     search_for_what_2.clear()
                     cur.execute("SELECT type_of_repair FROM types_of_repairs "
                                 "ORDER BY type_of_repair ASC ")
-                    x = cur.fetchall()
-                    #print(x)
-                    x = ',,'.join(map(str, x))
-                    #print(x)
-                    for r in (('(', ''), (',)', ''), ("'", '')):
-                        x = x.replace(*r)
-                    search_for_what_2.addItems(x.split(',,'))
+                    types_of_repairs = cur.fetchall()
+                    types_of_repairs = [type_of_repair[0] for type_of_repair in types_of_repairs]
+                    search_for_what_2.addItems(types_of_repairs)
         except Exception as e:
             self.show_error.show_error(e)
 
@@ -1203,20 +1167,13 @@ class Main_Window(QMainWindow):
                         regexp_replace(room, '\\d+', '', 'g'),
                         CAST(NULLIF(regexp_replace(room, '\\D+', '', 'g'), '') AS INTEGER)
                         """,
-                        (
-                            search_for_what_2.currentText(),
+                        (search_for_what_2.currentText(),)
                         )
-                        )
-                x = cur.fetchall()
-                #print(x)
-                x = ',,'.join(map(str, x))
-                #print(x)
-                for r in (('(', ''), (',)', ''), ("'", '')):
-                    x = x.replace(*r)
-                #print(x.split(','))
+                rooms = cur.fetchall()
+                rooms = [room[0] for room in rooms]
                 if search_for_what.currentText() == "По Адресу":
                     search_for_what_3.addItem('Всё')
-                search_for_what_3.addItems(x.split(',,'))
+                search_for_what_3.addItems(rooms)
         except Exception as e:
             self.show_error.show_error(e)
 
@@ -1231,79 +1188,61 @@ class Main_Window(QMainWindow):
             )
             with con.cursor() as cur:
 
-
                 #"""ID Улицы"""
                 cur.execute(
-                    "SELECT id "
-                    "FROM streets "
-                    "WHERE street = %s",
-                    (
-                        self.add_CB_address.currentText(),
-                    )
+                    """
+                    SELECT id 
+                    FROM streets 
+                    WHERE street = %s
+                    """,
+                    (self.add_CB_address.currentText(),)
                 )
-                id_street = cur.fetchall()
-                id_street = ',,'.join(map(str, id_street))
-                for r in (('(', ''), (',)', '')):
-                    id_street = id_street.replace(*r)
+                id_street = cur.fetchone()[0]
                 #print(f"Улица_id: {id_street}")
 
                 #"""ID Адресса"""
                 cur.execute(
-                    "SELECT id "
-                    "FROM address "
-                    "WHERE room = %s AND street_id = %s",
-                    (
-                        self.add_CB_room.currentText(),
-                        id_street
-                    )
+                    """SELECT id 
+                    FROM address 
+                    WHERE room = %s AND street_id = %s
+                    """,
+                    (self.add_CB_room.currentText(), id_street)
                 )
-                id_address = cur.fetchall()
-                id_address = ',,'.join(map(str, id_address))
-                for r in (('(', ''), (',)', '')):
-                    id_address = id_address.replace(*r)
-                print(f"Комната_id: {id_address}")
+                id_address = cur.fetchone()[0]
+                #print(f"Комната_id: {id_address}")
 
                 #"""ID Типа оборудования"""
                 cur.execute(
-                    "SELECT id "
-                    "FROM types "
-                    "WHERE type = %s",
-                    (
-                        self.add_CB_type.currentText(),
-                    )
+                    """SELECT id 
+                    FROM types 
+                    WHERE type = %s
+                    """,
+                    (self.add_CB_type.currentText(),)
                 )
-                id_type = cur.fetchall()
-                id_type = ',,'.join(map(str, id_type))
-                for r in (('(', ''), (',)', '')):
-                    id_type = id_type.replace(*r)
-                print(f"Тип_id: {id_type}")
+                id_type = cur.fetchone()[0]
+                #print(f"Тип_id: {id_type}")
 
                 #"""Имя"""
                 cur.execute(
-                    f"INSERT INTO names ( "
-                    f"id, name, sn, date) "
-                    f"VALUES (DEFAULT, %s, %s, %s)",
-                    (
-                        self.add_name.text(),
-                        self.add_sn.text(),
-                        self.add_date.text()
-                    )
+                    """
+                    INSERT INTO names (id, name, sn, date) 
+                    VALUES (DEFAULT, %s, %s, %s)
+                    """,
+                    (self.add_name.text(), self.add_sn.text(), self.add_date.text())
                 )
 
                 con.commit()
-                print('Данные добавленны в names')
+                #print('Данные добавленны в names')
 
                 cur.execute(
-                    "SELECT DISTINCT ON (id) id "
-                    "FROM names "
-                    "ORDER BY id DESC"
+                    """
+                    SELECT DISTINCT ON (id) id 
+                    FROM names 
+                    ORDER BY id DESC
+                    """
                 )
-                id_name = cur.fetchall()
-                id_name = str(id_name[0])
-                #print(str(x[0]))
-                for r in (('(', ''), (',)', '')):
-                    id_name = id_name.replace(*r)
-                print(f"Имя_id: {id_name}")
+                id_name = cur.fetchone()[0]
+                #print(f"Имя_id: {id_name}")
 
                 add_message = QMessageBox()
                 add_message.setWindowTitle("Добавление в базу")
@@ -1314,31 +1253,18 @@ class Main_Window(QMainWindow):
                 if add_message.standardButton(add_message.clickedButton()) == QMessageBox.Ok:
                     """Добавление в базу"""
                     cur.execute(
-                        "INSERT INTO equipments ( "
-                        "id, address_id, type_id, name_id) "
-                        "VALUES (DEFAULT, %s, %s, %s)",
-                        (
-                            id_address,
-                            id_type,
-                            id_name
-                        )
+                        """
+                        INSERT INTO equipments (id, address_id, type_id, name_id) 
+                        VALUES (DEFAULT, %s, %s, %s)
+                        """,
+                        (id_address, id_type, id_name)
                     )
                     con.commit()
                     print('УСПЕШНО ДОБАВЛЕННО В БАЗУ!')
-                    add_message = QMessageBox()
-                    add_message.setWindowTitle("Успешно")
-                    add_message.setText("Оборудование добавленно в базу")
-                    add_message.setIcon(QMessageBox.Information)
-                    add_message.setStandardButtons(QMessageBox.Ok)
-                    add_message.exec_()
+                    QMessageBox.information(None, "Успешно!", "Оборудование успешно добавлено в базу!")
                 else:
                     print('ОТМЕНА!')
-                    add_message = QMessageBox()
-                    add_message.setWindowTitle("Отмена")
-                    add_message.setText("Оборудование НЕ добавленно в базу")
-                    add_message.setIcon(QMessageBox.Information)
-                    add_message.setStandardButtons(QMessageBox.Ok)
-                    add_message.exec_()
+                    QMessageBox.information(None, "Отмена!", "Оборудование НЕ добавлено в базу!")
 
         except Exception as e:
             self.show_error.show_error(e)
@@ -1606,17 +1532,13 @@ class Add_Something(QMainWindow):
             with con.cursor() as cur:
                 if self.main_window.more_rooms_rule:
                     cur.execute(
-                        f"SELECT id "
-                        f"FROM streets "
-                        f"WHERE street = %s",
-                        (
-                            self.main_window.add_CB_address.currentText(),
-                        )
+                        """SELECT id 
+                        FROM streets 
+                        WHERE street = %s
+                        """,
+                        (self.main_window.add_CB_address.currentText(),)
                     )
-                    id_street = cur.fetchall()
-                    id_street = ',,'.join(map(str, id_street))
-                    for r in (('(', ''), (',)', '')):
-                        id_street = id_street.replace(*r)
+                    id_street = cur.fetchone()[0]
                 else:
                     pass
 
@@ -1625,59 +1547,47 @@ class Add_Something(QMainWindow):
                 add_message.setWindowTitle(f"Добавление {self.title}")
                 if self.main_window.more_rooms_rule:
                     add_message.setText(
-                        f"Добавить кабинет {str(self.add_something_LE.text())} на {str(self.main_window.add_CB_address.currentText())}?")
+                        f"Добавить кабинет '{str(self.add_something_LE.text())}' на {str(self.main_window.add_CB_address.currentText())}?")
                 elif self.main_window.more_types_rule:
                     add_message.setText(
-                        f"Добавить {str(self.add_something_LE.text())} в оборудование?")
+                        f"Добавить '{str(self.add_something_LE.text())}' в оборудование?")
                 add_message.setIcon(QMessageBox.Question)
                 add_message.setStandardButtons(QMessageBox.Cancel | QMessageBox.Ok)
-                add_message.exec_()
-                if add_message.standardButton(add_message.clickedButton()) == QMessageBox.Ok:
-
+                if add_message.exec_() == QMessageBox.Ok:
                     #"""Добавление в базу"""
                     if self.main_window.more_rooms_rule:
                         cur.execute(
-                            "INSERT INTO address ( "
-                            "id, street_id, room) "
-                            "VALUES (DEFAULT, %s, %s)",
-                            (
-                                id_street,
-                                self.add_something_LE.text()
-                            )
+                            """INSERT INTO address (id, street_id, room) 
+                            VALUES (DEFAULT, %s, %s)
+                            """,
+                            (id_street, self.add_something_LE.text())
                         )
                     elif self.main_window.more_types_rule:
                         cur.execute(
-                            "INSERT INTO types ( "
-                            "id, type) "
-                            "VALUES (DEFAULT, %s)",
-                            (
-                                self.add_something_LE.text(),
-                            )
+                            """
+                            INSERT INTO types (id, type) 
+                            VALUES (DEFAULT, %s)
+                            """,
+                            (self.add_something_LE.text(),)
                         )
                     con.commit()
-
                     add_message = QMessageBox()
                     add_message.setWindowTitle("Успешно!")
                     if self.main_window.more_rooms_rule:
                         print(
                             f"УСПЕШНО ДОБАВЛЕНН КАБИНЕТ {str(self.add_something_LE.text())} НА {str(self.main_window.add_CB_address.currentText())}!")
-                        add_message.setText(f"Кабинет добавлен на {str(self.main_window.add_CB_address.currentText())}")
+                        add_message.setText(f"Кабинет '{str(self.add_something_LE.text())}' добавлен на {str(self.main_window.add_CB_address.currentText())}")
                     elif self.main_window.more_types_rule:
                         print(
                             f"УСПЕШНО ДОБАВЛЕННО ОБОРУДОВАНИЕ {str(self.add_something_LE.text())}!")
-                        add_message.setText(f"Оборудование {str(self.add_something_LE.text())} добавленно!")
+                        add_message.setText(f"Оборудование '{str(self.add_something_LE.text())}' добавлено!")
                     add_message.setIcon(QMessageBox.Information)
                     add_message.setStandardButtons(QMessageBox.Ok)
                     add_message.exec_()
                     self.add_something_LE.clear()
                 else:
                     print('ОТМЕНА!')
-                    add_message = QMessageBox()
-                    add_message.setWindowTitle("Отмена")
-                    add_message.setText("НЕ добавленно!!!")
-                    add_message.setIcon(QMessageBox.Information)
-                    add_message.setStandardButtons(QMessageBox.Ok)
-                    add_message.exec_()
+                    QMessageBox.information(None, "Отмена!", "НЕ Добавлено!")
         except Exception as e:
             self.show_error.show_error(e)
 
@@ -1715,41 +1625,88 @@ class Equipment_Window(QMainWindow):
         self.lable_address.setText("Адрес:")
         self.layout.addWidget(self.lable_address, 0, 0)
         self.lable_address.setFixedHeight(15)
+        self.address_text = QtWidgets.QLabel(self.centralwidget)
         self.address = QtWidgets.QComboBox(self.centralwidget)
+        self.address_stack = QtWidgets.QStackedLayout()
+        self.address_stack.addWidget(self.address_text)
+        self.address_stack.addWidget(self.address)
+        self.layout.addLayout(self.address_stack, 1, 0)
         self.address.currentTextChanged.connect(self.room_info)
 
         self.lable_room = QtWidgets.QLabel(self.centralwidget)
         self.lable_room.setText("Кабинет:")
         self.layout.addWidget(self.lable_room, 2, 0)
         self.lable_room.setFixedHeight(15)
+        self.room_text = QtWidgets.QLabel(self.centralwidget)
         self.room = QtWidgets.QComboBox(self.centralwidget)
-        self.layout.addWidget(self.room, 3, 0)
-        self.room.setEnabled(False)
+        self.room_stack = QtWidgets.QStackedLayout()
+        self.room_stack.addWidget(self.room_text)
+        self.room_stack.addWidget(self.room)
+        self.layout.addLayout(self.room_stack, 3, 0)
+
         self.lable_type = QtWidgets.QLabel(self.centralwidget)
         self.lable_type.setText("Оборудование:")
         self.layout.addWidget(self.lable_type, 4, 0)
         self.lable_type.setFixedHeight(15)
+        self.type_text = QtWidgets.QLabel(self.centralwidget)
         self.type = QtWidgets.QComboBox(self.centralwidget)
-
-        self.lable_name = QtWidgets.QLabel(self.centralwidget)
-        self.lable_name.setText("Наименование:")
-        self.layout.addWidget(self.lable_name, 0, 1)
-        self.name = QtWidgets.QLineEdit(self.centralwidget)
-
-        self.lable_sn = QtWidgets.QLabel(self.centralwidget)
-        self.lable_sn.setText("Серийный номер:")
-        self.layout.addWidget(self.lable_sn, 2, 1)
-        self.sn = QtWidgets.QLineEdit(self.centralwidget)
-
-        self.lable_date = QtWidgets.QLabel(self.centralwidget)
-        self.lable_date.setText("Год выпуска:")
-        self.layout.addWidget(self.lable_date, 4, 1)
-        self.date = QtWidgets.QLineEdit(self.centralwidget)
+        self.type_stack = QtWidgets.QStackedLayout()
+        self.type_stack.addWidget(self.type_text)
+        self.type_stack.addWidget(self.type)
+        self.layout.addLayout(self.type_stack, 5, 0)
 
         self.lable_status = QtWidgets.QLabel(self.centralwidget)
         self.lable_status.setText("Статус:")
         self.layout.addWidget(self.lable_status, 6, 0)
+        self.status_text = QtWidgets.QLabel(self.centralwidget)
         self.status = QtWidgets.QComboBox(self.centralwidget)
+        self.status_stack = QtWidgets.QStackedLayout()
+        self.status_stack.addWidget(self.status_text)
+        self.status_stack.addWidget(self.status)
+        self.layout.addLayout(self.status_stack, 7, 0)
+
+        self.lable_name = QtWidgets.QLabel(self.centralwidget)
+        self.lable_name.setText("Наименование:")
+        self.layout.addWidget(self.lable_name, 0, 1)
+        self.name_text = QtWidgets.QLabel(self.centralwidget)
+        self.name_text.setMinimumWidth(250)
+        self.name = QtWidgets.QLineEdit(self.centralwidget)
+        self.name.setMinimumWidth(250)
+        self.name_stack = QtWidgets.QStackedLayout()
+        self.name_stack.addWidget(self.name_text)
+        self.name_stack.addWidget(self.name)
+        self.layout.addLayout(self.name_stack, 1, 1)
+
+        self.lable_sn = QtWidgets.QLabel(self.centralwidget)
+        self.lable_sn.setText("Серийный номер:")
+        self.layout.addWidget(self.lable_sn, 2, 1)
+        self.sn_text = QtWidgets.QLabel(self.centralwidget)
+        self.sn = QtWidgets.QLineEdit(self.centralwidget)
+        self.sn_stack = QtWidgets.QStackedLayout()
+        self.sn_stack.addWidget(self.sn_text)
+        self.sn_stack.addWidget(self.sn)
+        self.layout.addLayout(self.sn_stack, 3, 1)
+
+        self.lable_date = QtWidgets.QLabel(self.centralwidget)
+        self.lable_date.setText("Год выпуска:")
+        self.layout.addWidget(self.lable_date, 4, 1)
+        self.date_text = QtWidgets.QLabel(self.centralwidget)
+        self.date = QtWidgets.QLineEdit(self.centralwidget)
+        self.date_stack = QtWidgets.QStackedLayout()
+        self.date_stack.addWidget(self.date_text)
+        self.date_stack.addWidget(self.date)
+        self.layout.addLayout(self.date_stack, 5, 1)
+
+        self.lable_ru = QtWidgets.QLabel(self.centralwidget)
+        self.lable_ru.setText("Рег. Удостоверение:")
+        self.layout.addWidget(self.lable_ru, 6, 1)
+        self.ru_text = QtWidgets.QLabel(self.centralwidget)
+        self.ru = QtWidgets.QLineEdit(self.centralwidget)
+        self.ru_stack = QtWidgets.QStackedLayout()
+        self.ru_stack.addWidget(self.ru_text)
+        self.ru_stack.addWidget(self.ru)
+        self.layout.addLayout(self.ru_stack, 7, 1)
+
 
         self.table = QtWidgets.QTableWidget(self.centralwidget)
         self.layout.addWidget(self.table, 8, 0, 4, 4)
@@ -1757,8 +1714,6 @@ class Equipment_Window(QMainWindow):
 
         self.btn_change = QtWidgets.QPushButton(self.centralwidget)
         self.btn_change.setText("Изменить")
-        if not admin:
-            self.btn_change.setEnabled(False)
         self.btn_change.clicked.connect(self.change_equipment)
         self.layout.addWidget(self.btn_change, 1, 3)
 
@@ -1781,8 +1736,27 @@ class Equipment_Window(QMainWindow):
         self.main_window = Main_Window()
 
         self.info()
+
+        for x in [
+            self.lable_address,
+            self.lable_room,
+            self.lable_type,
+            self.lable_status,
+            self.lable_name,
+            self.lable_sn,
+            self.lable_date,
+            self.lable_ru
+        ]:
+            self.set_bold(x)
+
         if not admin:
-            self.btn_add.setEnabled(False)
+            for x in [
+                self.btn_add,
+                self.btn_change,
+                self.btn_save,
+                self.btn_cancel
+            ]:
+                x.setVisible(False)
 
     def info(self):
         try:
@@ -1794,55 +1768,29 @@ class Equipment_Window(QMainWindow):
             )
             with con.cursor() as cur:
 
-                ###"""ПОДХФАТ ИМЕНИ"""
-
-                cur.execute(
-                    "SELECT names.name "
-                    "FROM equipments "
-                    "INNER JOIN names ON names.id = equipments.name_id "
-                    "WHERE equipments.id = %s",
-                    (
-                        index,
-                    )
-                )
-                name = cur.fetchall()
-                name = ',,'.join(map(str, name))
-                for r in (('(', ''), (',)', ''), ("'", '')):
-                    name = str(name.replace(*r))
-                self.setWindowTitle(f'Данные о "{name}"')
-
                 ###"""ВЫДАЧА ИНФЫ"""
 
                 #"""Адрес"""
 
                 cur.execute("SELECT street FROM streets")
-                x = cur.fetchall()
-                x = ',,'.join(map(str, x))
-                for r in (('(', ''), (',)', ''), ("'", '')):
-                    x = x.replace(*r)
-                self.address.addItems(x.split(',,'))
-                self.layout.addWidget(self.address, 1, 0)
+                streets = cur.fetchall()
+                streets = [x[0] for x in streets]
+                self.address.clear()
+                self.address.addItems(streets)
                 cur.execute(
-                    "SELECT streets.id "
-                    "FROM equipments "
-                    "INNER JOIN address ON address.id = equipments.address_id "
-                    "INNER JOIN streets ON street_id = streets.id "
-                    "WHERE equipments.id = %s",
-                    (
-                        index,
-                    )
+                    """
+                    SELECT streets.street 
+                    FROM equipments 
+                    INNER JOIN address ON address.id = equipments.address_id 
+                    INNER JOIN streets ON street_id = streets.id 
+                    WHERE equipments.id = %s
+                    """,
+                    (index,)
                 )
-                address = cur.fetchall()
+                address = cur.fetchone()[0]
                 #print(address)
-                address = ',,'.join(map(str, address))
-                for r in (('(', ''), (',)', ''), ("'", '')):
-                    address = str(address.replace(*r))
-                    #print(address)
-                self.address.setCurrentIndex(int(address)-1)
-                self.address.setEnabled(False)
-
-                #"""Кабинет"""
-
+                self.address.setCurrentText(address)
+                self.address_text.setText(address)
 
                 #"""Оборудование"""
 
@@ -1850,142 +1798,139 @@ class Equipment_Window(QMainWindow):
                     "SELECT type FROM types "
                     "ORDER BY type ASC"
                 )
-                x = cur.fetchall()
-                x = ',,'.join(map(str, x))
-                for r in (('(', ''), (',)', ''), ("'", '')):
-                    x = x.replace(*r)
-                self.type.addItems(x.split(',,'))
-                self.layout.addWidget(self.type, 5, 0)
+                types = cur.fetchall()
+                types = [x[0] for x in types]
+                self.type.clear()
+                self.type.addItems(types)
                 cur.execute(
-                    "SELECT types.type "
-                    "FROM equipments "
-                    "INNER JOIN types ON types.id = equipments.type_id "
-                    "WHERE equipments.id = %s",
-                    (
-                        index,
-                    )
+                    """
+                    SELECT types.type 
+                    FROM equipments 
+                    INNER JOIN types ON types.id = equipments.type_id 
+                    WHERE equipments.id = %s
+                    """,
+                    (index,)
                 )
-                type = cur.fetchall()
-                type = ',,'.join(map(str, type))
-                for r in (('(', ''), (',)', ''), ("'", '')):
-                    type = str(type.replace(*r))
+                type = cur.fetchone()[0]
                 #print(type)
                 self.type.setCurrentText(type)
-                self.type.setEnabled(False)
+                self.type_text.setText(type)
 
                 #"""Наименование"""
-
                 cur.execute(
-                    "SELECT names.name "
-                    "FROM equipments "
-                    "INNER JOIN names ON names.id = equipments.name_id "
-                    "WHERE equipments.id = %s",
-                    (
-                        index,
-                    )
+                    """
+                    SELECT names.name 
+                    FROM equipments 
+                    INNER JOIN names ON names.id = equipments.name_id 
+                    WHERE equipments.id = %s
+                    """,
+                    (index,)
                 )
-                name = cur.fetchall()
-                name = ',,'.join(map(str, name))
-                for r in (('(', ''), (',)', ''), ("'", '')):
-                    name = str(name.replace(*r))
-                #print(name)
+                name = cur.fetchone()[0]
+                # print(name)
+                self.setWindowTitle(f'Данные о "{name}"')
                 cur.execute("SELECT DISTINCT name FROM names")
-                x = cur.fetchall()
-                # print(x)
-                x = ',,'.join(map(str, x))
-                # print(x)
-                for r in (('(', ''), (',)', ''), ("'", '')):
-                    x = x.replace(*r)
-                completer = QCompleter(x.split(',,'))
-                self.name.setCompleter(completer)
-                completer.setCaseSensitivity(QtCore.Qt.CaseInsensitive)
+                name_completer = cur.fetchall()
+                name_completer = [x[0] for x in name_completer]
+                name_completer = QCompleter(name_completer)
+                name_completer.setCaseSensitivity(QtCore.Qt.CaseInsensitive)
+                self.name.setCompleter(name_completer)
+                self.name.setText(name)
+                self.name_text.setText(name)
 
-                self.name.setText(f"{str(name)}")
-                self.layout.addWidget(self.name, 1, 1)
-                self.name.setMinimumWidth(250)
-                self.name.setEnabled(False)
 
                 #"""Серийный номер"""
 
                 cur.execute(
-                    "SELECT names.sn "
-                    "FROM equipments "
-                    "INNER JOIN names ON names.id = equipments.name_id "
-                    "WHERE equipments.id = %s",
-                    (
-                        index,
-                    )
+                    """
+                    SELECT names.sn 
+                    FROM equipments 
+                    INNER JOIN names ON names.id = equipments.name_id 
+                    WHERE equipments.id = %s
+                    """,
+                    (index,)
                 )
-                sn = cur.fetchall()
-                sn = ',,'.join(map(str, sn))
-                for r in (('(', ''), (',)', ''), ("'", '')):
-                    sn = str(sn.replace(*r))
+                sn = cur.fetchone()[0]
                 #print(sn)
-                self.sn.setText(f"{str(sn)}")
-                self.layout.addWidget(self.sn, 3, 1)
-                self.sn.setEnabled(False)
+                self.sn.setText(sn)
+                self.sn_text.setText(sn)
 
                 #"""Дата создания"""
 
                 cur.execute(
-                    "SELECT names.date "
-                    "FROM equipments "
-                    "INNER JOIN names ON names.id = equipments.name_id "
-                    "WHERE equipments.id = %s",
-                    (
-                        index,
-                    )
+                    """
+                    SELECT names.date 
+                    FROM equipments 
+                    INNER JOIN names ON names.id = equipments.name_id 
+                    WHERE equipments.id = %s
+                    """,
+                    (index,)
                 )
-                date = cur.fetchall()
-                date = ',,'.join(map(str, date))
-                for r in (("(Decimal('", ''), ("'),)", '')):
-                    date = str(date.replace(*r))
+                date = cur.fetchone()[0]
                 #print(date)
-                self.date.setText(f"{str(date)}")
-                self.layout.addWidget(self.date, 5, 1)
-                self.date.setEnabled(False)
+                self.date.setText(str(date))
+                self.date_text.setText(str(date))
+
+                #"""Регистрационное Удостоверение"""
+
+                cur.execute(
+                    """
+                    SELECT rus.ru 
+                    FROM equipments 
+                    INNER JOIN rus ON rus.id = equipments.ru_id 
+                    WHERE equipments.id = %s
+                    """,
+                    (index,)
+                )
+                ru = cur.fetchone()
+                if ru:
+                    ru = ru[0]
+                #print(ru)
+                else:
+                    ru = ''
+                cur.execute("SELECT DISTINCT ru FROM rus")
+                ru_completer = cur.fetchall()
+                ru_completer = [x[0] for x in ru_completer]
+                ru_completer = QCompleter(ru_completer)
+                ru_completer.setCaseSensitivity(QtCore.Qt.CaseInsensitive)
+                self.ru.setCompleter(ru_completer)
+                self.ru.setText(str(ru))
+                self.ru_text.setText(str(ru))
+                self.ru_new = ru
+
 
                 #"""Статус"""
 
+                cur.execute("SELECT status FROM status ")
+                statuss = cur.fetchall()
+                statuss = [x[0] for x in statuss]
+                self.status.clear()
+                self.status.addItems(statuss)
                 cur.execute(
-                    "SELECT status FROM status "
+                    """
+                    SELECT status.status 
+                    FROM equipments 
+                    INNER JOIN status ON status.id = equipments.status_id 
+                    WHERE equipments.id = %s
+                    """,
+                    (index,)
                 )
-                x = cur.fetchall()
-                x = ',,'.join(map(str, x))
-                for r in (('(', ''), (',)', ''), ("'", '')):
-                    x = x.replace(*r)
-                self.status.addItems(x.split(',,'))
-                self.layout.addWidget(self.status, 7, 0)
-                cur.execute(
-                    "SELECT status.status "
-                    "FROM equipments "
-                    "INNER JOIN status ON status.id = equipments.status_id "
-                    "WHERE equipments.id = %s",
-                    (
-                        index,
-                    )
-                )
-                status = cur.fetchall()
-                status = ',,'.join(map(str, status))
-                for r in (('(', ''), (',)', ''), ("'", '')):
-                    status = str(status.replace(*r))
-                #print(type)
+                status = cur.fetchone()[0]
+                #print(status)
                 self.status.setCurrentText(status)
-                self.status.setEnabled(False)
+                self.status_text.setText(status)
 
                 #"""РЕМОНТЫ"""
 
                 cur.execute(
-                    "SELECT repairs.id, repairs.date, repairs.fault, repairs.repair,  types_of_repairs.type_of_repair, status.status, repairs.repairman "
-                    "FROM repairs "
-                    "INNER JOIN equipments ON equipments.id = repairs.equipments_id "
-                    "INNER JOIN status ON status.id = repairs.status_id "
-                    "INNER JOIN types_of_repairs ON types_of_repairs.id = repairs.types_of_repairs_id "
-                    "WHERE equipments.id = %s",
-                    (
-                        index,
-                    )
-                    #"ORDER BY LENGTH(date), room ASC ;"
+                    """SELECT repairs.id, repairs.date, repairs.fault, repairs.repair, types_of_repairs.type_of_repair, status.status, repairs.repairman 
+                    FROM repairs 
+                    INNER JOIN equipments ON equipments.id = repairs.equipments_id 
+                    INNER JOIN status ON status.id = repairs.status_id 
+                    INNER JOIN types_of_repairs ON types_of_repairs.id = repairs.types_of_repairs_id 
+                    WHERE equipments.id = %s
+                    """,
+                    (index,)
                 )
                 data = cur.fetchall()
                 a = len(data)  # rows
@@ -2006,8 +1951,9 @@ class Equipment_Window(QMainWindow):
                 self.table.horizontalHeader().setMaximumSectionSize(200)
                 self.table.horizontalHeader().setSectionResizeMode(2, QHeaderView.Stretch)
                 self.table.horizontalHeader().setSectionResizeMode(3, QHeaderView.Stretch)
-                self.table.sortByColumn(0, QtCore.Qt.DescendingOrder)
-
+                self.table.sortByColumn(1, QtCore.Qt.DescendingOrder)
+                if not admin:
+                    self.table.hideColumn(0)
                 self.table.resizeColumnsToContents()
                 self.table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
                 self.status_row_colors(self.table)
@@ -2015,10 +1961,27 @@ class Equipment_Window(QMainWindow):
             if not IndexError:
                 self.show_error.show_error(e)
 
-    #"""Изменить значения"""
+    #"""Толстый шрифт"""
+    def set_bold(self, widget: QtWidgets.QWidget, bold: bool = True):
+        font = widget.font()
+        font.setBold(bold)
+        widget.setFont(font)
+
+    #"""Кнопка "Изменить значения""""
     def change_equipment(self):
-        for x in [self.address, self.room, self.type, self.name, self.sn, self.date, self.status, self.btn_save, self.btn_cancel]:
+        for x in [self.btn_save, self.btn_cancel]:
             x.setEnabled(True)
+        for stack, widget in [
+            (self.address_stack, self.address),
+            (self.room_stack, self.room),
+            (self.type_stack, self.type),
+            (self.status_stack, self.status),
+            (self.name_stack, self.name),
+            (self.sn_stack, self.sn),
+            (self.date_stack, self.date),
+            (self.ru_stack, self.ru),
+        ]:
+            stack.setCurrentWidget(widget)
         self.btn_change.setEnabled(False)
 
     #"""Инфа о кабинете"""
@@ -2032,37 +1995,31 @@ class Equipment_Window(QMainWindow):
             )
             with con.cursor() as cur:
                 cur.execute(
-                    "SELECT address.room "
-                    "FROM address "
-                    "INNER JOIN streets ON street_id = streets.id "
-                    "WHERE streets.street = %s" 
-                    "ORDER BY regexp_replace(room, '\\d+', '', 'g'), CAST(NULLIF(regexp_replace(room, '\\D+', '', 'g'), '') AS INTEGER) ",
-                    (
-                        self.address.currentText(),
-                    )
+                    """
+                    SELECT address.room 
+                    FROM address 
+                    INNER JOIN streets ON street_id = streets.id 
+                    WHERE streets.street = %s 
+                    ORDER BY regexp_replace(room, '\\d+', '', 'g'), CAST(NULLIF(regexp_replace(room, '\\D+', '', 'g'), '') AS INTEGER) 
+                    """,
+                    (self.address.currentText(),)
                 )
-                x = cur.fetchall()
-                x = ',,'.join(map(str, x))
-                for r in (('(', ''), (',)', ''), ("'", '')):
-                    x = x.replace(*r)
+                rooms = cur.fetchall()
+                rooms = [x[0] for x in rooms]
                 self.room.clear()
-                self.room.addItems(x.split(',,'))
+                self.room.addItems(rooms)
                 cur.execute(
-                    "SELECT address.room "
-                    "FROM equipments "
-                    "INNER JOIN address ON address.id = equipments.address_id "
-                    "WHERE equipments.id = %s "
-                    "ORDER BY regexp_replace(room, '\\d+', '', 'g'), CAST(NULLIF(regexp_replace(room, '\\D+', '', 'g'), '') AS INTEGER) ",
-                    (
-                        index,
-                    )
+                    """
+                    SELECT address.room 
+                    FROM equipments 
+                    INNER JOIN address ON address.id = equipments.address_id 
+                    WHERE equipments.id = %s 
+                    """,
+                    (index,)
                 )
-                room = cur.fetchall()
-                room = ',,'.join(map(str, room))
-                #print(room)
-                for r in (('(', ''), (',)', ''), ("'", '')):
-                    room = str(room.replace(*r))
+                room = cur.fetchone()[0]
                 self.room.setCurrentText(room)
+                self.room_text.setText(room)
         except Exception as e:
             self.show_error.show_error(e)
 
@@ -2077,123 +2034,208 @@ class Equipment_Window(QMainWindow):
             )
             with con.cursor() as cur:
 
-                ###"""Редактирование значений"""
-                ###"""Адрес и комната"""
+                #"""Редактирование значений"""
+                #"""Адрес и комната"""
                 cur.execute(
-                    f"SELECT streets.id "
-                    f"From streets "
-                    f"WHERE streets.street = '{str(self.address.currentText())}'"
+                    """
+                    SELECT streets.id 
+                    From streets 
+                    WHERE streets.street = %s
+                    """,
+                    (self.address.currentText(),)
                 )
-                street_id = cur.fetchall()
-                street_id = ','.join(map(str, street_id))
-                for r in (('(', ''), (',)', ''), ("'", '')):
-                    street_id = str(street_id.replace(*r))
+                street_id = cur.fetchone()[0]
+
                 cur.execute(
-                    f"SELECT address.id "
-                    f"FROM address "
-                    f"WHERE address.street_id = '{street_id}' AND address.room = '{str(self.room.currentText())}'"
+                    """
+                    SELECT address.id 
+                    FROM address 
+                    WHERE address.street_id = %s AND address.room = %s
+                    """,
+                    (street_id, self.room.currentText())
                 )
-                address_id = cur.fetchall()
-                address_id = ','.join(map(str, address_id))
-                for r in (('(', ''), (',)', ''), ("'", '')):
-                    address_id = str(address_id.replace(*r))
-                print(address_id)
+                address_id = cur.fetchone()[0]
+                #print(address_id)
                 cur.execute(
-                    f"UPDATE equipments "
-                    f"SET address_id = '{address_id}' "
-                    f"FROM address "
-                    f"WHERE address.id = equipments.address_id AND equipments.id = {str(index)}"
+                    """
+                    UPDATE equipments 
+                    SET address_id = %s 
+                    WHERE equipments.id = %s
+                    """,
+                    (address_id, index)
                 )
 
-                ###"""Тип"""
+                #"""Тип"""
+
                 cur.execute(
-                    f"SELECT types.id "
-                    f"FROM types "
-                    f"WHERE types.type = '{str(self.type.currentText())}'"
+                    """
+                    SELECT types.id 
+                    FROM types 
+                    WHERE types.type = %s
+                    """,
+                    (self.type.currentText(),)
                 )
-                type_id = cur.fetchall()
-                type_id = ','.join(map(str, type_id))
-                for r in (('(', ''), (',)', ''), ("'", '')):
-                    type_id = str(type_id.replace(*r))
+                type_id = cur.fetchone()[0]
                 cur.execute(
-                    f"UPDATE equipments "
-                    f"SET type_id = '{type_id}' "
-                    f"FROM types "
-                    f"WHERE types.id = equipments.type_id AND equipments.id = {str(index)}"
+                    """
+                    UPDATE equipments 
+                    SET type_id = %s 
+                    WHERE equipments.id = %s
+                    """,
+                    (type_id, index)
                 )
 
-                ###"""Имя"""
+                #"""Имя"""
                 cur.execute(
-                    f"UPDATE names "
-                    f"SET name = '{str(self.name.text())}' "
-                    f"FROM equipments  "
-                    f"WHERE names.id = equipments.name_id AND equipments.id = {str(index)}"
+                    """
+                    UPDATE names 
+                    SET name = %s 
+                    FROM equipments  
+                    WHERE names.id = equipments.name_id AND equipments.id = %s
+                    """,
+                    (self.name.text(), index)
                 )
 
-                ###"""Серийник"""
+                #"""Серийник"""
                 cur.execute(
-                    f"UPDATE names "
-                    f"SET sn = '{str(self.sn.text())}' "
-                    f"FROM equipments  "
-                    f"WHERE names.id = equipments.name_id AND equipments.id = {str(index)}"
+                    """
+                    UPDATE names 
+                    SET sn = %s 
+                    FROM equipments  
+                    WHERE names.id = equipments.name_id AND equipments.id = %s
+                    """,
+                    (self.sn.text(), index)
                 )
 
-                ###"""Дата"""
+                #"""Дата"""
                 cur.execute(
-                    f"UPDATE names "
-                    f"SET date = '{str(self.date.text())}' "
-                    f"FROM equipments  "
-                    f"WHERE names.id = equipments.name_id AND equipments.id = {str(index)}"
+                    """
+                    UPDATE names 
+                    SET date = %s 
+                    FROM equipments 
+                    WHERE names.id = equipments.name_id AND equipments.id = %s
+                    """,
+                    (self.date.text(), index)
                 )
 
-                ###"""Статус"""
+                #"""Статус"""
                 cur.execute(
-                    f"SELECT status.id "
-                    f"FROM status "
-                    f"WHERE status.status = '{str(self.status.currentText())}'"
+                    """
+                    SELECT status.id 
+                    FROM status 
+                    WHERE status.status = %s
+                    """,
+                    (self.status.currentText(),)
                 )
-                status_id = cur.fetchall()
-                status_id = ','.join(map(str, status_id))
-                for r in (('(', ''), (',)', ''), ("'", '')):
-                    status_id = str(status_id.replace(*r))
+                status_id = cur.fetchone()[0]
                 cur.execute(
-                    f"UPDATE equipments "
-                    f"SET status_id = '{status_id}' "
-                    f"FROM status "
-                    f"WHERE status.id = equipments.status_id AND equipments.id = {str(index)}"
+                    """
+                    UPDATE equipments 
+                    SET status_id = %s
+                    WHERE equipments.id = %s
+                    """,
+                    (status_id, index)
                 )
+                if self.ru_new != self.ru.text():
+                    self.ru_update(cur)
                 save_message = QMessageBox()
                 save_message.setWindowTitle("Изменение")
                 save_message.setText("Изменить данные?")
                 save_message.setIcon(QMessageBox.Question)
-                save_message.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
-                save_message.exec_()
-                if save_message.standardButton(save_message.clickedButton()) == QMessageBox.Yes:
+                save_message.setStandardButtons(QMessageBox.Ok | QMessageBox.Cancel)
+                if save_message.exec_() == QMessageBox.Ok:
                     con.commit()
                     print('УСПЕШНО ИЗМЕНЕНО!')
-                    change_message = QMessageBox()
-                    change_message.setWindowTitle("Успешно")
-                    change_message.setText("Данные изменены")
-                    change_message.setIcon(QMessageBox.Information)
-                    change_message.setStandardButtons(QMessageBox.Ok)
-                    change_message.exec_()
+                    QMessageBox.information(None, "Успешно!", "Данные изменены!")
                 else:
                     print('ОТМЕНА')
-                    change_message = QMessageBox()
-                    change_message.setWindowTitle("Отмена")
-                    change_message.setText("Данные НЕ изменены")
-                    change_message.setIcon(QMessageBox.Information)
-                    change_message.setStandardButtons(QMessageBox.Ok)
-                    change_message.exec_()
+                    QMessageBox.information(None, "Отмена!", "Данные НЕ изменены!!!")
+                self.info()
                 self.cancel()
 
         except Exception as e:
             self.show_error.show_error(e)
 
+    #"""Изменение РУ"
+    def ru_update(self, cur):
+        print('Изменение РУ')
+        try:
+            change_message = QMessageBox()
+            change_message.setWindowTitle("Внимание!")
+            change_message.setText(f"Вы собираетесь изменить РУ! \n"
+                                f"Это приведет к изменению РУ у всех '{self.name.text()}'! \n"
+                                f"Продолжить?")
+            change_message.setIcon(QMessageBox.Question)
+            change_message.setStandardButtons(QMessageBox.Cancel | QMessageBox.Ok)
+            if change_message.exec_() == QMessageBox.Ok:
+                cur.execute("SELECT id FROM rus WHERE ru = %s",
+                            (self.ru.text(),))
+                ru_id = cur.fetchone()
+                if ru_id:
+                    ru_id = ru_id[0]
+                    print(ru_id)
+                    print(self.name.text())
+                    cur.execute(
+                        """
+                        UPDATE equipments 
+                        SET ru_id = %s 
+                        FROM names
+                        WHERE equipments.name_id = names.id 
+                        AND names.name = %s
+                        """,
+                        (ru_id, self.name.text())
+                    )
+                else:
+                    add_ru_message = QMessageBox()
+                    add_ru_message.setWindowTitle("Внимание!")
+                    add_ru_message.setText("Такого РУ не существует! \nДобавить?")
+                    add_ru_message.setIcon(QMessageBox.Question)
+                    add_ru_message.setStandardButtons(QMessageBox.Cancel | QMessageBox.Ok)
+                    if add_ru_message.exec_() == QMessageBox.Ok:
+                        cur.execute(
+                            """
+                            INSERT INTO rus (id, ru) 
+                            VALUES (DEFAULT, %s) 
+                            """,
+                            (self.ru.text(),)
+                        )
+                        cur.execute("SELECT id FROM rus WHERE ru = %s",
+                                    (self.ru.text(),))
+                        ru_id = cur.fetchone()[0]
+                        cur.execute(
+                            """
+                            UPDATE equipments 
+                            SET ru_id = %s 
+                            FROM names
+                            WHERE equipments.name_id = names.id 
+                            AND names.name = %s
+                            """,
+                            (ru_id, self.name.text())
+                        )
+                    else:
+                        print('ОТМЕНА!')
+                        QMessageBox.information(None, "Отмена!", "РУ НЕ добавлено!!!")
+            else:
+                print('ОТМЕНА!')
+                QMessageBox.information(None, "Отмена!", f"РУ для '{self.name.text()}' НЕ изменено!!!")
+        except Exception as e:
+            self.show_error.show_error(e)
+
     #"""Отмена"""
     def cancel(self):
-        for x in [self.address, self.room, self.type, self.name, self.sn, self.date, self.status, self.btn_save, self.btn_cancel]:
+        for x in [self.btn_save, self.btn_cancel]:
             x.setEnabled(False)
+        for stack, widget in [
+            (self.address_stack, self.address_text),
+            (self.room_stack, self.room_text),
+            (self.type_stack, self.type_text),
+            (self.status_stack, self.status_text),
+            (self.name_stack, self.name_text),
+            (self.sn_stack, self.sn_text),
+            (self.date_stack, self.date_text),
+            (self.ru_stack, self.ru_text),
+        ]:
+            stack.setCurrentWidget(widget)
         self.btn_change.setEnabled(True)
 
     #"""Добавить записть"""
@@ -2236,7 +2278,7 @@ class Equipment_Window(QMainWindow):
 
     #"""Запуск сигнала о закрытии"""
     def closeEvent(self, event):
-        print("Закрытие'Equipment_Window'")
+        #print("Закрытие'Equipment_Window'")
         self.closed.emit()  # Испускаем сигнал при закрытии
         self.close()
         super().closeEvent(event)
@@ -2340,54 +2382,40 @@ class Entry_Window(QMainWindow):
 
             with con.cursor() as cur:
                 cur.execute(
-                    "SELECT names.name "
-                    "FROM equipments "
-                    "INNER JOIN names ON names.id = equipments.name_id "
-                    f"WHERE equipments.id = '{str(index)}'"
+                    """
+                    SELECT names.name 
+                    FROM equipments 
+                    INNER JOIN names ON names.id = equipments.name_id 
+                    WHERE equipments.id = %s
+                    """,
+                    (index,)
                 )
-                self.name = cur.fetchall()
-                self.name = ','.join(map(str, self.name))
-                for r in (('(', ''), (',)', ''), ("'", '')):
-                    self.name = str(self.name.replace(*r))
-                self.setWindowTitle(f'Добавить запись к {self.name}')
+                self.name = cur.fetchone()[0]
+                # print(name)
+                self.setWindowTitle(f'Данные о "{self.name}"')
 
                 #"""Ошибка"""
 
                 cur.execute("SELECT DISTINCT fault FROM repairs")
-                x = cur.fetchall()
-                # print(x)
-                x = ',,'.join(map(str, x))
-                # print(x)
-                for r in (('(', ''), (',)', ''), ("'", '')):
-                    x = x.replace(*r)
-                # print(x.split(','))
-                self.completer_fault = QCompleter(x.split(',,'))
+                faults = cur.fetchall()
+                faults = [fault[0] for fault in faults]
+                self.completer_fault = QCompleter(faults)
                 self.fault.setCompleter(self.completer_fault)
 
                 #"""Работы"""
 
                 cur.execute("SELECT DISTINCT repair FROM repairs")
-                x = cur.fetchall()
-                # print(x)
-                x = ',,'.join(map(str, x))
-                #print(x)
-                for r in (('(', ''), (',)', ''), ("'", '')):
-                    x = x.replace(*r)
-                # print(x.split(','))
-                completer_repair = QCompleter(x.split(',,'))
+                repairs = cur.fetchall()
+                repairs = [repair[0] for repair in repairs]
+                completer_repair = QCompleter(repairs)
                 self.repair.setCompleter(completer_repair)
 
                 #"""Тип работ"""
 
-                cur.execute(
-                    "SELECT type_of_repair FROM types_of_repairs "
-                )
-                type_of_repair = cur.fetchall()
-                type_of_repair = ',,'.join(map(str, type_of_repair))
-                for r in (('(', ''), (',)', ''), ("'", '')):
-                    type_of_repair = str(type_of_repair.replace(*r))
-                #print(type_of_repair)
-                self.type_of_repair.addItems(type_of_repair.split(',,'))
+                cur.execute("SELECT type_of_repair FROM types_of_repairs ")
+                types_of_repairs = cur.fetchall()
+                types_of_repairs = [type_of_repair[0] for type_of_repair in types_of_repairs]
+                self.type_of_repair.addItems(types_of_repairs)
                 self.layout.addWidget(self.type_of_repair, 5, 0)
 
                 #"""Статус"""
@@ -2396,12 +2424,9 @@ class Entry_Window(QMainWindow):
                     "SELECT status FROM status "
                     "ORDER BY status ASC "
                 )
-                status = cur.fetchall()
-                status = ',,'.join(map(str, status))
-                for r in (('(', ''), (',)', ''), ("'", '')):
-                    status = str(status.replace(*r))
-                #print(type_of_repair)
-                self.status.addItems(status.split(',,'))
+                statuses = cur.fetchall()
+                statuses = [statuse[0] for statuse in statuses]
+                self.status.addItems(statuses)
                 self.layout.addWidget(self.status, 5, 1)
 
 
@@ -2422,20 +2447,13 @@ class Entry_Window(QMainWindow):
                 database=db_name
             )
             with con.cursor() as cur:
-                cur.execute(
-                    "SELECT name FROM repairmans "
-                )
                 cur.execute("SELECT DISTINCT name FROM repairmans")
-                repairmain = cur.fetchall()
-                # print(repairmain)
-                repairmain = ',,'.join(map(str, repairmain))
-                # print(repairmain)
-                for r in (('(', ''), (',)', ''), ("'", '')):
-                    repairmain = repairmain.replace(*r)
-                completer = QCompleter(repairmain.split(',,'))
-                self.repairmain_selected = repairmain.split(',,')
-                self.repairman.setCompleter(completer)
-                completer.setCaseSensitivity(QtCore.Qt.CaseInsensitive)
+                repairmens = cur.fetchall()
+                repairmen = [repairmen[0] for repairmen in repairmens]  # Преобразуем в список строк
+                repairmain_completer = QCompleter(repairmen)
+                repairmain_completer.setCaseSensitivity(QtCore.Qt.CaseInsensitive)
+                self.repairman.setCompleter(repairmain_completer)
+                self.repairmain_selected = repairmen[0]
                 self.layout.addWidget(self.repairman, 5, 2)
         except Exception as e:
             self.show_error.show_error(e)
@@ -2454,37 +2472,25 @@ class Entry_Window(QMainWindow):
             )
             with con.cursor() as cur:
                 if self.repairman.text() not in self.repairmain_selected:
-                    add_message = QMessageBox()
-                    add_message.setWindowTitle("Внимание!")
-                    add_message.setText("Такого исполнителя не существует! \nДобавить?")
-                    add_message.setIcon(QMessageBox.Question)
-                    add_message.setStandardButtons(QMessageBox.Cancel | QMessageBox.Ok)
-                    add_message.exec_()
-                    if add_message.standardButton(add_message.clickedButton()) == QMessageBox.Ok:
+                    add_repairman_message = QMessageBox()
+                    add_repairman_message.setWindowTitle("Внимание!")
+                    add_repairman_message.setText("Такого исполнителя не существует! \nДобавить?")
+                    add_repairman_message.setIcon(QMessageBox.Question)
+                    add_repairman_message.setStandardButtons(QMessageBox.Cancel | QMessageBox.Ok)
+                    if add_repairman_message.exec_() == QMessageBox.Ok:
                         cur.execute(
-                            f"INSERT INTO repairmans ( id, name) "
-                            f"VALUES (DEFAULT, %s) ",
-                            (
-                                self.repairman.text(),
-                            )
+                            """
+                            INSERT INTO repairmans (id, name) 
+                            VALUES (DEFAULT, %s) 
+                            """,
+                            (self.repairman.text(),)
                         )
                         con.commit()
                         print('УСПЕШНО ДОБАВЛЕННО ИНЖЕНЕР!')
-
-                        add_message = QMessageBox()
-                        add_message.setWindowTitle("Успешно")
-                        add_message.setText("Исполнитель добавлен")
-                        add_message.setIcon(QMessageBox.Information)
-                        add_message.setStandardButtons(QMessageBox.Ok)
-                        add_message.exec_()
+                        QMessageBox.information(None, "Успешно!", "Исполнитель добавлен!")
                     else:
                         print('ОТМЕНА!')
-                        add_message = QMessageBox()
-                        add_message.setWindowTitle("Отмена")
-                        add_message.setText("Исполнитель НЕ добавлен!!!")
-                        add_message.setIcon(QMessageBox.Information)
-                        add_message.setStandardButtons(QMessageBox.Ok)
-                        add_message.exec_()
+                        QMessageBox.information(None, "Отмена!", "Исполнитель НЕ добавлен!")
                     self.update_repairman()
         except Exception as e:
             self.show_error.show_error(e)
@@ -2505,18 +2511,15 @@ class Entry_Window(QMainWindow):
                 # """ID Статуса"""
 
                 cur.execute(
-                    "SELECT id "
-                    "FROM status "
-                    "WHERE status = %s",
-                    (
-                        self.status.currentText(),
-                    )
+                    """
+                    SELECT id 
+                    FROM status 
+                    WHERE status = %s
+                    """,
+                    (self.status.currentText(),)
                 )
-                self.id_status = cur.fetchall()
-                self.id_status = ',,'.join(map(str, self.id_status))
-                for r in (('(', ''), (',)', '')):
-                    self.id_status = self.id_status.replace(*r)
-                print(f"Статус_id: {self.id_status}")
+                self.id_status = cur.fetchone()[0]
+                #print(f"Статус_id: {self.id_status}")
 
                 # """ID Типа ремонта"""
 
@@ -2524,62 +2527,43 @@ class Entry_Window(QMainWindow):
                     "SELECT id "
                     "FROM types_of_repairs "
                     "WHERE type_of_repair = %s",
-                    (
-                        self.type_of_repair.currentText(),
-                    )
+                    (self.type_of_repair.currentText(),)
                 )
-                id_type_of_repair = cur.fetchall()
-                id_type_of_repair = ','.join(map(str, id_type_of_repair))
-                for r in (('(', ''), (',)', '')):
-                    id_type_of_repair = id_type_of_repair.replace(*r)
-                print(f"Тип ремонта: {id_type_of_repair}")
+                id_type_of_repair = cur.fetchone()[0]
+                #print(f"Тип ремонта: {id_type_of_repair}")
 
                 add_message = QMessageBox()
                 add_message.setWindowTitle("Добавление в журнал")
                 add_message.setText("Добавить в журнал?")
                 add_message.setIcon(QMessageBox.Question)
                 add_message.setStandardButtons(QMessageBox.Cancel | QMessageBox.Ok)
-                add_message.exec_()
-                if add_message.standardButton(add_message.clickedButton()) == QMessageBox.Ok:
+                if add_message.exec_() == QMessageBox.Ok:
+
                     #"""Добавление в журнал"""
 
                     cur.execute(
-                        "INSERT INTO repairs ( "
-                        "id, fault, repair, date, status_id, equipments_id, repairman, types_of_repairs_id) "
-                        "VALUES (DEFAULT, %s, %s, %s, %s, %s, %s, %s)",
-                        (
-                            self.fault.text(),
-                            self.repair.text(),
-                            self.date.text(),
-                            self.id_status,
-                            index,
-                            self.repairman.text(),
-                            id_type_of_repair
-                        )
+                        """
+                        INSERT INTO repairs ( 
+                        id, fault, repair, date, status_id, equipments_id, repairman, types_of_repairs_id) 
+                        VALUES (DEFAULT, %s, %s, %s, %s, %s, %s, %s)
+                        """,
+                        (self.fault.text(), self.repair.text(), self.date.text(), self.id_status, index, self.repairman.text(), id_type_of_repair)
                     )
 
-                    """Добавление в оборудование"""
+                    #"""Добавление в оборудование"""
+
                     cur.execute(
-                        "UPDATE equipments "
-                        "SET status_id = %s "
-                        "FROM status "
-                        "WHERE status.id = equipments.status_id AND equipments.id = %s",
-                        (
-                            self.id_status,
-                            index
-                        )
+                        """
+                        UPDATE equipments 
+                        SET status_id = %s 
+                        WHERE id = %s
+                        """,
+                        (self.id_status, index)
                     )
                     #print(f"Ошибка: {str(self.fault.setPlainText())}, Ремонт: {str(self.repair.setPlainText())}, Дата: {str(self.date.text())}, Инженер: {str(self.repairman.text())}")
                     con.commit()
-
                     print('УСПЕШНО ДОБАВЛЕННО В ЖУРНАЛ!')
-
-                    add_message = QMessageBox()
-                    add_message.setWindowTitle("Успешно")
-                    add_message.setText("Запись добавленна в журнал")
-                    add_message.setIcon(QMessageBox.Information)
-                    add_message.setStandardButtons(QMessageBox.Ok)
-                    add_message.exec_()
+                    QMessageBox.information(None, "Успешно!", "Запись добавлена в журнал!")
 
                     #"""Создаем ПДФ"""
                     self.generate_pdf()
@@ -2587,12 +2571,7 @@ class Entry_Window(QMainWindow):
                     #self.close()
                 else:
                     print('ОТМЕНА!')
-                    add_message = QMessageBox()
-                    add_message.setWindowTitle("Отмена")
-                    add_message.setText("Запись НЕ добавленна в журнал!!!")
-                    add_message.setIcon(QMessageBox.Information)
-                    add_message.setStandardButtons(QMessageBox.Ok)
-                    add_message.exec_()
+                    QMessageBox.information(None, "Отмена!", "Запись НЕ добавленна в журнал!")
 
         except Exception as e:
             self.show_error.show_error(e)
@@ -2613,95 +2592,76 @@ class Entry_Window(QMainWindow):
                 # """Оборудование"""
 
                 cur.execute(
-                    "SELECT types.type "
-                    "FROM equipments "
-                    "INNER JOIN types ON types.id = equipments.type_id "
-                    "WHERE equipments.id = %s",
-                    (
-                        index,
-                    )
+                    """
+                    SELECT types.type 
+                    FROM equipments 
+                    INNER JOIN types ON types.id = equipments.type_id 
+                    WHERE equipments.id = %s
+                    """,
+                    (index,)
                 )
-                self.type = cur.fetchall()
-                self.type = ',,'.join(map(str, self.type))
-                for r in (('(', ''), (',)', ''), ("'", '')):
-                    self.type = str(self.type.replace(*r))
+                self.type = cur.fetchone()[0]
                 # print(type)
 
                 # """Серийный номер"""
 
                 cur.execute(
-                    "SELECT names.sn "
-                    "FROM equipments "
-                    "INNER JOIN names ON names.id = equipments.name_id "
-                    "WHERE equipments.id = %s",
-                    (
-                        index,
-                    )
+                    """
+                    SELECT names.sn 
+                    FROM equipments 
+                    INNER JOIN names ON names.id = equipments.name_id 
+                    WHERE equipments.id = %s
+                    """,
+                    (index,)
                 )
-                self.sn = cur.fetchall()
-                self.sn = ',,'.join(map(str, self.sn))
-                for r in (('(', ''), (',)', ''), ("'", '')):
-                    self.sn = str(self.sn.replace(*r))
+                self.sn = cur.fetchone()[0]
                 # print(sn)
-
 
                 # """Дата создания"""
 
                 cur.execute(
-                    "SELECT names.date "
-                    "FROM equipments "
-                    "INNER JOIN names ON names.id = equipments.name_id "
-                    "WHERE equipments.id = %s",
-                    (
-                        index,
-                    )
+                    """
+                    SELECT names.date 
+                    FROM equipments 
+                    INNER JOIN names ON names.id = equipments.name_id 
+                    WHERE equipments.id = %s
+                    """,
+                    (index,)
                 )
-                self.date_of_create = cur.fetchall()
-                self.date_of_create = ',,'.join(map(str, self.date_of_create))
-                for r in (("(Decimal('", ''), ("'),)", '')):
-                    self.date_of_create = str(self.date_of_create.replace(*r))
+                self.date_of_create = str(cur.fetchone()[0])
                 # print(date)
 
                 # """Адрес"""
 
-                cur.execute("SELECT street FROM streets")
-                x = cur.fetchall()
-                x = ',,'.join(map(str, x))
-                for r in (('(', ''), (',)', ''), ("'", '')):
-                    x = x.replace(*r)
+                # cur.execute("SELECT street FROM streets")
+                # x = cur.fetchall()
+                # x = ',,'.join(map(str, x))
+                # for r in (('(', ''), (',)', ''), ("'", '')):
+                #     x = x.replace(*r)
                 cur.execute(
-                    "SELECT streets.id "
-                    "FROM equipments "
-                    "INNER JOIN address ON address.id = equipments.address_id "
-                    "INNER JOIN streets ON street_id = streets.id "
-                    "WHERE equipments.id = %s",
-                    (
-                        index,
-                    )
+                    """
+                    SELECT streets.id 
+                    FROM equipments 
+                    INNER JOIN address ON address.id = equipments.address_id 
+                    INNER JOIN streets ON street_id = streets.id 
+                    WHERE equipments.id = %s
+                    """,
+                    (index,)
                 )
-                self.address = cur.fetchall()
+                self.address = cur.fetchone()[0]
                 # print(address)
-                self.address = ',,'.join(map(str, self.address))
-                for r in (('(', ''), (',)', ''), ("'", '')):
-                    self.address = str(self.address.replace(*r))
-                    # print(address)
 
                 # """Кабинет"""
                 cur.execute(
-                    "SELECT address.room "
-                    "FROM equipments "
-                    "INNER JOIN address ON address.id = equipments.address_id "
-                    "WHERE equipments.id = %s",
-                    (
-                        index,
-                    )
+                    """SELECT address.room 
+                    FROM equipments 
+                    INNER JOIN address ON address.id = equipments.address_id 
+                    WHERE equipments.id = %s
+                    """,
+                    (index,)
                 )
-                self.room = cur.fetchall()
-                self.room = ',,'.join(map(str, self.room))
+                self.room = cur.fetchone()[0]
                 #print(room)
-                for r in (('(', ''), (',)', ''), ("'", '')):
-                    self.room = str(self.room.replace(*r))
-
 
                 # Шаблон PDF
                 template_path = resource_path("template.pdf")
@@ -2794,7 +2754,6 @@ class Entry_Window(QMainWindow):
 
         except Exception as e:
             self.show_error.show_error(e)
-
 
     #"""Последовательность ПДФ"""
     def next_AKT_BP(self):
