@@ -24,7 +24,7 @@ from PyPDF2 import PdfReader, PdfWriter
 from pathlib import Path
 
 
-config_dir = user_config_dir("MyApp", "MyCompany")  # MyApp — имя приложения, MyCompany — имя разработчика
+config_dir = user_config_dir("DocPlusDB", "Maksimenko")  # MyApp — имя приложения, MyCompany — имя разработчика
 os.makedirs(config_dir, exist_ok=True)  # Создаем директорию, если её нет
 config_path = os.path.join(config_dir, "config.json")  # Путь к файлу конфигурации
 
@@ -59,7 +59,7 @@ db_name = config["db_name"]
 port = config["port"]
 
 # Версия
-current_version = "2.2.0"
+current_version = "2.2.1"
 # Права админа
 admin = None
 
@@ -351,12 +351,7 @@ class Settings_Window(QMainWindow):
                         self.main_window.show()
                         self.close()
                     else:
-                        error = QMessageBox()
-                        error.setWindowTitle("Ошибка")
-                        error.setText("Неверный пароль!")
-                        error.setIcon(QMessageBox.Warning)
-                        error.setStandardButtons(QMessageBox.Ok)
-                        error.exec_()
+                        QMessageBox.warning(self, "Внимание!", "Неверный пароль!")
                 else:
                     self.main_window = Main_Window()
                     self.main_window.show()
@@ -401,6 +396,7 @@ class Settings_Window(QMainWindow):
         save_message.setWindowTitle("Изменение")
         save_message.setText("Изменить настройки?")
         save_message.setIcon(QMessageBox.Question)
+        save_message.setWindowIcon(QtGui.QIcon(resource_path('logo.png')))
         save_message.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
         save_message.exec_()
         self.btn_connect.setEnabled(True)
@@ -430,23 +426,13 @@ class Settings_Window(QMainWindow):
 
             # Закрываем текущее окно настроек
             #self.close()
-            change_message = QMessageBox()
-            change_message.setWindowTitle("Успешно")
-            change_message.setText("Данные изменены")
-            change_message.setIcon(QMessageBox.Information)
-            change_message.setStandardButtons(QMessageBox.Ok)
-            change_message.exec_()
+            QMessageBox.information(self, "Успешно!", "Настройки изменены!")
             print('УСПЕШНО ИЗМЕНЕНО!')
             new_login_window = Settings_Window(self.config)
             new_login_window.show()
         else:
             print('ОТМЕНА')
-            change_message = QMessageBox()
-            change_message.setWindowTitle("Отмена")
-            change_message.setText("Данные НЕ изменены")
-            change_message.setIcon(QMessageBox.Information)
-            change_message.setStandardButtons(QMessageBox.Ok)
-            change_message.exec_()
+            QMessageBox.information(self, "Отмена!", "Настройки НЕ изменены!")
 
     #"""Выйти"""
     def exit(self):
@@ -1197,7 +1183,7 @@ class Main_Window(QMainWindow):
                     """,
                     (self.add_CB_address.currentText(),)
                 )
-                id_street = cur.fetchone()[0]
+                street_id = cur.fetchone()[0]
                 #print(f"Улица_id: {id_street}")
 
                 #"""ID Адресса"""
@@ -1206,10 +1192,10 @@ class Main_Window(QMainWindow):
                     FROM address 
                     WHERE room = %s AND street_id = %s
                     """,
-                    (self.add_CB_room.currentText(), id_street)
+                    (self.add_CB_room.currentText(), street_id)
                 )
-                id_address = cur.fetchone()[0]
-                #print(f"Комната_id: {id_address}")
+                address_id = cur.fetchone()[0]
+                #print(f"Комната_id: {address_id}")
 
                 #"""ID Типа оборудования"""
                 cur.execute(
@@ -1219,52 +1205,64 @@ class Main_Window(QMainWindow):
                     """,
                     (self.add_CB_type.currentText(),)
                 )
-                id_type = cur.fetchone()[0]
-                #print(f"Тип_id: {id_type}")
+                type_id = cur.fetchone()[0]
+                #print(f"Тип_id: {type_id}")
 
-                #"""Имя"""
+                #"""РУ"""
                 cur.execute(
                     """
-                    INSERT INTO names (id, name, sn, date) 
-                    VALUES (DEFAULT, %s, %s, %s)
+                    SELECT equipments.ru_id
+                    FROM equipments
+                    INNER JOIN names ON names.id = equipments.name_id
+                    WHERE names.name = %s
+                    LIMIT 1
                     """,
-                    (self.add_name.text(), self.add_sn.text(), self.add_date.text())
+                    (self.add_name.text(),)
                 )
-
-                con.commit()
-                #print('Данные добавленны в names')
-
-                cur.execute(
-                    """
-                    SELECT DISTINCT ON (id) id 
-                    FROM names 
-                    ORDER BY id DESC
-                    """
-                )
-                id_name = cur.fetchone()[0]
-                #print(f"Имя_id: {id_name}")
+                ru_id = cur.fetchone()
+                ru_id = ru_id[0] if ru_id else 22
+                #print(f"РУ_id: {ru_id}")
 
                 add_message = QMessageBox()
                 add_message.setWindowTitle("Добавление в базу")
                 add_message.setText("Добавить в базу данных?")
                 add_message.setIcon(QMessageBox.Question)
+                add_message.setWindowIcon(QtGui.QIcon(resource_path('logo.png')))
                 add_message.setStandardButtons(QMessageBox.Cancel|QMessageBox.Ok)
-                add_message.exec_()
-                if add_message.standardButton(add_message.clickedButton()) == QMessageBox.Ok:
+                if add_message.exec_() == QMessageBox.Ok:
                     """Добавление в базу"""
+                    # """Имя"""
                     cur.execute(
                         """
-                        INSERT INTO equipments (id, address_id, type_id, name_id) 
+                        INSERT INTO names (id, name, sn, date) 
                         VALUES (DEFAULT, %s, %s, %s)
                         """,
-                        (id_address, id_type, id_name)
+                        (self.add_name.text(), self.add_sn.text(), self.add_date.text())
+                    )
+                    con.commit()
+                    # print('Данные добавленны в names')
+                    cur.execute(
+                        """
+                        SELECT DISTINCT ON (id) id 
+                        FROM names 
+                        ORDER BY id DESC
+                        """
+                    )
+                    name_id = cur.fetchone()[0]
+                    # print(f"Имя_id: {name_id}")
+                    cur.execute(
+                        """
+                        INSERT INTO equipments (id, address_id, type_id, name_id, ru_id) 
+                        VALUES (DEFAULT, %s, %s, %s, %s)
+                        """,
+                        (address_id, type_id, name_id, ru_id)
                     )
                     con.commit()
                     print('УСПЕШНО ДОБАВЛЕННО В БАЗУ!')
-                    QMessageBox.information(None, "Успешно!", "Оборудование успешно добавлено в базу!")
+                    QMessageBox.information(self, "Успешно!", "Оборудование успешно добавлено в базу!")
                 else:
                     print('ОТМЕНА!')
-                    QMessageBox.information(None, "Отмена!", "Оборудование НЕ добавлено в базу!")
+                    QMessageBox.information(self, "Отмена!", "Оборудование НЕ добавлено в базу!")
 
         except Exception as e:
             self.show_error.show_error(e)
@@ -1552,6 +1550,7 @@ class Add_Something(QMainWindow):
                     add_message.setText(
                         f"Добавить '{str(self.add_something_LE.text())}' в оборудование?")
                 add_message.setIcon(QMessageBox.Question)
+                add_message.setWindowIcon(QtGui.QIcon(resource_path('logo.png')))
                 add_message.setStandardButtons(QMessageBox.Cancel | QMessageBox.Ok)
                 if add_message.exec_() == QMessageBox.Ok:
                     #"""Добавление в базу"""
@@ -1582,12 +1581,13 @@ class Add_Something(QMainWindow):
                             f"УСПЕШНО ДОБАВЛЕННО ОБОРУДОВАНИЕ {str(self.add_something_LE.text())}!")
                         add_message.setText(f"Оборудование '{str(self.add_something_LE.text())}' добавлено!")
                     add_message.setIcon(QMessageBox.Information)
+                    add_message.setWindowIcon(QtGui.QIcon(resource_path('logo.png')))
                     add_message.setStandardButtons(QMessageBox.Ok)
                     add_message.exec_()
                     self.add_something_LE.clear()
                 else:
                     print('ОТМЕНА!')
-                    QMessageBox.information(None, "Отмена!", "НЕ Добавлено!")
+                    QMessageBox.information(self, "Отмена!", "НЕ Добавлено!")
         except Exception as e:
             self.show_error.show_error(e)
 
@@ -1837,7 +1837,7 @@ class Equipment_Window(QMainWindow):
                 self.name.setCompleter(name_completer)
                 self.name.setText(name)
                 self.name_text.setText(name)
-
+                self.name_old = name
 
                 #"""Серийный номер"""
 
@@ -1883,11 +1883,7 @@ class Equipment_Window(QMainWindow):
                     (index,)
                 )
                 ru = cur.fetchone()
-                if ru:
-                    ru = ru[0]
-                #print(ru)
-                else:
-                    ru = ''
+                ru = ru[0] if ru else ''
                 cur.execute("SELECT DISTINCT ru FROM rus")
                 ru_completer = cur.fetchall()
                 ru_completer = [x[0] for x in ru_completer]
@@ -1896,7 +1892,7 @@ class Equipment_Window(QMainWindow):
                 self.ru.setCompleter(ru_completer)
                 self.ru.setText(str(ru))
                 self.ru_text.setText(str(ru))
-                self.ru_new = ru
+                self.ru_old = ru
 
 
                 #"""Статус"""
@@ -2136,20 +2132,23 @@ class Equipment_Window(QMainWindow):
                     """,
                     (status_id, index)
                 )
-                if self.ru_new != self.ru.text():
+                if self.ru_old != self.ru.text():
                     self.ru_update(cur)
+                if self.name_old != self.name.text():
+                    self.name_update(cur)
                 save_message = QMessageBox()
                 save_message.setWindowTitle("Изменение")
                 save_message.setText("Изменить данные?")
                 save_message.setIcon(QMessageBox.Question)
+                save_message.setWindowIcon(QtGui.QIcon(resource_path('logo.png')))
                 save_message.setStandardButtons(QMessageBox.Ok | QMessageBox.Cancel)
                 if save_message.exec_() == QMessageBox.Ok:
                     con.commit()
                     print('УСПЕШНО ИЗМЕНЕНО!')
-                    QMessageBox.information(None, "Успешно!", "Данные изменены!")
+                    QMessageBox.information(self, "Успешно!", "Данные изменены!")
                 else:
                     print('ОТМЕНА')
-                    QMessageBox.information(None, "Отмена!", "Данные НЕ изменены!!!")
+                    QMessageBox.information(self, "Отмена!", "Данные НЕ изменены!!!")
                 self.info()
                 self.cancel()
 
@@ -2166,6 +2165,7 @@ class Equipment_Window(QMainWindow):
                                 f"Это приведет к изменению РУ у всех '{self.name.text()}'! \n"
                                 f"Продолжить?")
             change_message.setIcon(QMessageBox.Question)
+            change_message.setWindowIcon(QtGui.QIcon(resource_path('logo.png')))
             change_message.setStandardButtons(QMessageBox.Cancel | QMessageBox.Ok)
             if change_message.exec_() == QMessageBox.Ok:
                 cur.execute("SELECT id FROM rus WHERE ru = %s",
@@ -2190,6 +2190,7 @@ class Equipment_Window(QMainWindow):
                     add_ru_message.setWindowTitle("Внимание!")
                     add_ru_message.setText("Такого РУ не существует! \nДобавить?")
                     add_ru_message.setIcon(QMessageBox.Question)
+                    add_ru_message.setWindowIcon(QtGui.QIcon(resource_path('logo.png')))
                     add_ru_message.setStandardButtons(QMessageBox.Cancel | QMessageBox.Ok)
                     if add_ru_message.exec_() == QMessageBox.Ok:
                         cur.execute(
@@ -2214,12 +2215,35 @@ class Equipment_Window(QMainWindow):
                         )
                     else:
                         print('ОТМЕНА!')
-                        QMessageBox.information(None, "Отмена!", "РУ НЕ добавлено!!!")
+                        QMessageBox.information(self, "Отмена!", "РУ НЕ добавлено!!!")
             else:
                 print('ОТМЕНА!')
-                QMessageBox.information(None, "Отмена!", f"РУ для '{self.name.text()}' НЕ изменено!!!")
+                QMessageBox.information(self, "Отмена!", f"РУ для '{self.name.text()}' НЕ изменено!!!")
         except Exception as e:
             self.show_error.show_error(e)
+
+    #"""Изменение имени"
+    def name_update(self, cur):
+        cur.execute(
+            """
+            SELECT equipments.ru_id
+            FROM equipments
+            INNER JOIN names ON names.id = equipments.name_id
+            WHERE names.name = %s
+            LIMIT 1
+            """,
+            (self.name.text(),)
+        )
+        ru_id = cur.fetchone()
+        ru_id = ru_id[0] if ru_id else 22
+        cur.execute(
+            """
+            UPDATE equipments 
+            SET ru_id = %s
+            WHERE equipments.id = %s
+            """,
+            (ru_id, index)
+        )
 
     #"""Отмена"""
     def cancel(self):
@@ -2476,6 +2500,7 @@ class Entry_Window(QMainWindow):
                     add_repairman_message.setWindowTitle("Внимание!")
                     add_repairman_message.setText("Такого исполнителя не существует! \nДобавить?")
                     add_repairman_message.setIcon(QMessageBox.Question)
+                    add_repairman_message.setWindowIcon(QtGui.QIcon(resource_path('logo.png')))
                     add_repairman_message.setStandardButtons(QMessageBox.Cancel | QMessageBox.Ok)
                     if add_repairman_message.exec_() == QMessageBox.Ok:
                         cur.execute(
@@ -2487,10 +2512,10 @@ class Entry_Window(QMainWindow):
                         )
                         con.commit()
                         print('УСПЕШНО ДОБАВЛЕННО ИНЖЕНЕР!')
-                        QMessageBox.information(None, "Успешно!", "Исполнитель добавлен!")
+                        QMessageBox.information(self, "Успешно!", "Исполнитель добавлен!")
                     else:
                         print('ОТМЕНА!')
-                        QMessageBox.information(None, "Отмена!", "Исполнитель НЕ добавлен!")
+                        QMessageBox.information(self, "Отмена!", "Исполнитель НЕ добавлен!")
                     self.update_repairman()
         except Exception as e:
             self.show_error.show_error(e)
@@ -2536,6 +2561,7 @@ class Entry_Window(QMainWindow):
                 add_message.setWindowTitle("Добавление в журнал")
                 add_message.setText("Добавить в журнал?")
                 add_message.setIcon(QMessageBox.Question)
+                add_message.setWindowIcon(QtGui.QIcon(resource_path('logo.png')))
                 add_message.setStandardButtons(QMessageBox.Cancel | QMessageBox.Ok)
                 if add_message.exec_() == QMessageBox.Ok:
 
@@ -2563,7 +2589,7 @@ class Entry_Window(QMainWindow):
                     #print(f"Ошибка: {str(self.fault.setPlainText())}, Ремонт: {str(self.repair.setPlainText())}, Дата: {str(self.date.text())}, Инженер: {str(self.repairman.text())}")
                     con.commit()
                     print('УСПЕШНО ДОБАВЛЕННО В ЖУРНАЛ!')
-                    QMessageBox.information(None, "Успешно!", "Запись добавлена в журнал!")
+                    QMessageBox.information(self, "Успешно!", "Запись добавлена в журнал!")
 
                     #"""Создаем ПДФ"""
                     self.generate_pdf()
@@ -2571,7 +2597,7 @@ class Entry_Window(QMainWindow):
                     #self.close()
                 else:
                     print('ОТМЕНА!')
-                    QMessageBox.information(None, "Отмена!", "Запись НЕ добавленна в журнал!")
+                    QMessageBox.information(self, "Отмена!", "Запись НЕ добавленна в журнал!")
 
         except Exception as e:
             self.show_error.show_error(e)
@@ -2819,6 +2845,7 @@ class Show_Error(QObject):
             self.error.setText("Что-то пошло не так")
             self.error.setDetailedText(f'Error: {e}')
         self.error.setIcon(QMessageBox.Warning)
+        self.error.setWindowIcon(QtGui.QIcon(resource_path('logo.png')))
         self.error.setStandardButtons(QMessageBox.Ok)
         print(f'Error: {e}')
         self.error.exec_()
