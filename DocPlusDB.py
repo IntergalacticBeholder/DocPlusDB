@@ -59,7 +59,7 @@ db_name = config["db_name"]
 port = config["port"]
 
 # Версия
-current_version = "2.2.1"
+current_version = "2.3.0"
 # Права админа
 admin = None
 
@@ -492,7 +492,7 @@ class Main_Window(QMainWindow):
         #"""Таблица"""
         self.table = QtWidgets.QTableWidget(self.search_groupe)
         self.table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
-        self.table.itemDoubleClicked.connect(lambda: self.equipment_show(self.table))
+        self.table.itemDoubleClicked.connect(lambda: self.equipment_show(self.table, itemDoubleClicked=True))
 
         #"""Поисковая строка №1"""
         self.search = QtWidgets.QLineEdit(self.search_groupe)
@@ -743,7 +743,7 @@ class Main_Window(QMainWindow):
         #"""Поисковая строка ремонтов"""
         self.search_repair = QtWidgets.QLineEdit(self.tab_repairs)
         self.search_repair.setEnabled(False)
-        self.table_repair.itemDoubleClicked.connect(lambda: self.equipment_show(self.table_repair))
+        self.table_repair.itemDoubleClicked.connect(lambda: self.equipment_show(self.table_repair, itemDoubleClicked=True))
 
         #"""Поисковая строка ремонтов №2"""
         self.search_repair2 = QtWidgets.QLineEdit(self.tab_repairs)
@@ -1254,12 +1254,21 @@ class Main_Window(QMainWindow):
                         """
                         INSERT INTO equipments (id, address_id, type_id, name_id, ru_id) 
                         VALUES (DEFAULT, %s, %s, %s, %s)
+                        RETURNING id
                         """,
                         (address_id, type_id, name_id, ru_id)
                     )
+                    self.new_equipment = cur.fetchone()[0]
+                    #print(self.new_equipment)
                     con.commit()
                     print('УСПЕШНО ДОБАВЛЕННО В БАЗУ!')
                     QMessageBox.information(self, "Успешно!", "Оборудование успешно добавлено в базу!")
+                    self.start_search(self.table, self.search_for_what, self.search_for_what2,
+                                      self.search_for_what3, self.search_for_what4, self.search_for_what5,
+                                      self.search_for_what6,
+                                      self.search, self.search2, self.start_resize_timer, self.resize_timer,
+                                      self.btn_save, self.status_row_colors)
+                    self.add_AKT(self.table)
                 else:
                     print('ОТМЕНА!')
                     QMessageBox.information(self, "Отмена!", "Оборудование НЕ добавлено в базу!")
@@ -1278,7 +1287,7 @@ class Main_Window(QMainWindow):
         rows = table.rowCount()
         cols = table.columnCount()
         if table == self.table:
-            heads = ['id', 'Адрес', 'Кабинет', 'Оборудование', 'Наименование', 'С/Н', 'Год выпуска']
+            heads = ['id', 'Адрес', 'Кабинет', 'Оборудование', 'Наименование', 'С/Н', 'Год выпуска', 'РУ', 'Статус']
             name, _ = QFileDialog.getSaveFileName(self, 'Сохранить как', 'Таблица оборудования.xls', 'Excel(*.xls)')
         else:
             heads = ['id', 'Адрес', 'Кабинет', 'Оборудование', 'Наименование', 'С/Н', 'Год выпуска', 'Неисправность',
@@ -1312,9 +1321,10 @@ class Main_Window(QMainWindow):
             ws.write(i, 4, n[4])
             ws.write(i, 5, n[5])
             ws.write(i, 6, n[6])
+            ws.write(i, 7, n[7])
+            ws.write(i, 8, n[8])
             if table == self.table_repair:
-                ws.write(i, 7, n[7])
-                ws.write(i, 8, n[8])
+
                 ws.write(i, 9, n[9])
                 ws.write(i, 10, n[10])
                 ws.write(i, 11, n[11])
@@ -1332,17 +1342,37 @@ class Main_Window(QMainWindow):
         table.setUpdatesEnabled(True)  # Включаем обновление
 
     #"""Показать Данные Оборудования"""
-    def equipment_show(self, table):
-
-        row = table.currentIndex().row()
+    def equipment_show(self, table, itemDoubleClicked=True):
         global index
-        index = table.model().index(row, 0).data()
+        index = None
+
+        if itemDoubleClicked:
+            row = table.currentIndex().row()
+            index = table.model().index(row, 0).data()
+        else:
+            for row in range(table.model().rowCount()):
+                #print(self.new_equipment)
+                if str(table.model().index(row, 0).data()) == str(self.new_equipment):
+                    index = self.new_equipment
+                    break
         print("ID:", index)
         self.equipment_window = Equipment_Window()
         self.equipment_window.closed.connect(lambda: self.start_search(self.table, self.search_for_what, self.search_for_what2,
                                                                   self.search_for_what3, self.search_for_what4, self.search_for_what5, self.search_for_what6,
                                                                   self.search, self.search2, self.start_resize_timer, self.resize_timer, self.btn_save, self.status_row_colors))
         self.equipment_window.show()
+
+    #"""Акт ввода при добавлении оборудования"""
+    def add_AKT(self, table):
+        global index
+        index = None
+        for row in range(table.model().rowCount()):
+            # print(self.new_equipment)
+            if str(table.model().index(row, 0).data()) == str(self.new_equipment):
+                index = self.new_equipment
+                break
+        self.entry_window = Entry_Window()
+        self.entry_window.add_entry(not_new_equipment=False)
 
     #"""Красим Табличку"""
     def status_row_colors(self, table):
@@ -2265,7 +2295,7 @@ class Equipment_Window(QMainWindow):
     #"""Добавить записть"""
     def show_entry(self):
         global index
-        print(index)
+        #print(index)
         self.entry_window = Entry_Window()
         self.entry_window.closed.connect(self.info)
         self.entry_window.show()
@@ -2324,7 +2354,6 @@ class Entry_Window(QMainWindow):
         super(Entry_Window, self).__init__()
         self.centralwidget = QtWidgets.QWidget(self)
         self.setCentralWidget(self.centralwidget)
-        #self.setWindowTitle('Добавить запись к ')
         self.setWindowIcon(QtGui.QIcon(resource_path('logo.png')))
         self.font = QtGui.QFont("Times", 10)
         self.centralwidget.setFont(self.font)
@@ -2374,7 +2403,13 @@ class Entry_Window(QMainWindow):
         self.date = QDateEdit(self.centralwidget)
         self.date.setDisplayFormat("yyyy-MM-dd")
         self.date.setDate(QtCore.QDate.currentDate())
+        self.date.setCalendarPopup(True)
+        self.date.setMinimumWidth(90)
         self.layout.addWidget(self.date, 5, 3)
+
+        self.add_date = QCheckBox("Добавить дату в акт?")
+        self.add_date.setChecked(True)
+        self.layout.addWidget(self.add_date, 10, 0)
 
         self.btn_cancel = QtWidgets.QPushButton(self.centralwidget)
         self.btn_cancel.setText("Отмена")
@@ -2384,14 +2419,14 @@ class Entry_Window(QMainWindow):
 
         self.btn_add = QtWidgets.QPushButton(self.centralwidget)
         self.btn_add.setText("Добавить запись")
-        self.btn_add.clicked.connect(self.add_entry)
-        self.layout.addWidget(self.btn_add, 8, 0, 1, 4)
+        self.btn_add.clicked.connect(lambda: self.add_entry(not_new_equipment=True))
+        self.layout.addWidget(self.btn_add, 9, 0, 1, 4)
 
         self.btn_generate_pdf = QtWidgets.QPushButton(self.centralwidget)
         self.btn_generate_pdf.setText("Создать PDF")
-        self.btn_generate_pdf.clicked.connect(self.generate_pdf)
+        self.btn_generate_pdf.clicked.connect(lambda: self.generate_pdf(not_new_equipment=True))
         self.layout.addWidget(self.btn_generate_pdf, 7, 2, 1, 2)
-
+        self.id_type_of_repair = None
         self.update_repairman()
 
         try:
@@ -2416,7 +2451,7 @@ class Entry_Window(QMainWindow):
                 )
                 self.name = cur.fetchone()[0]
                 # print(name)
-                self.setWindowTitle(f'Данные о "{self.name}"')
+                self.setWindowTitle(f'Добавить запись к "{self.name}"')
 
                 #"""Ошибка"""
 
@@ -2452,7 +2487,6 @@ class Entry_Window(QMainWindow):
                 statuses = [statuse[0] for statuse in statuses]
                 self.status.addItems(statuses)
                 self.layout.addWidget(self.status, 5, 1)
-
 
         except Exception as e:
             self.show_error.show_error(e)
@@ -2523,7 +2557,7 @@ class Entry_Window(QMainWindow):
             self.repairman_check_running = False
 
     #"""Добавить запись"""
-    def add_entry(self):
+    def add_entry(self, not_new_equipment=True):
         try:
             con = psycopg2.connect(
                 host=host,
@@ -2554,27 +2588,41 @@ class Entry_Window(QMainWindow):
                     "WHERE type_of_repair = %s",
                     (self.type_of_repair.currentText(),)
                 )
-                id_type_of_repair = cur.fetchone()[0]
-                #print(f"Тип ремонта: {id_type_of_repair}")
+                self.id_type_of_repair = cur.fetchone()[0]
+                #print(f"Тип ремонта: {self.id_type_of_repair}")
 
                 add_message = QMessageBox()
                 add_message.setWindowTitle("Добавление в журнал")
-                add_message.setText("Добавить в журнал?")
+                add_message.setText("'Добавить в журнал?" if not_new_equipment else "Это новое оборудование?\nВвести в эксплуатацию сегодняшним днем?")
                 add_message.setIcon(QMessageBox.Question)
                 add_message.setWindowIcon(QtGui.QIcon(resource_path('logo.png')))
                 add_message.setStandardButtons(QMessageBox.Cancel | QMessageBox.Ok)
                 if add_message.exec_() == QMessageBox.Ok:
 
                     #"""Добавление в журнал"""
+                    if not_new_equipment:
+                        cur.execute(
+                            """
+                            INSERT INTO repairs ( 
+                            id, fault, repair, date, status_id, equipments_id, repairman, types_of_repairs_id) 
+                            VALUES (DEFAULT, %s, %s, %s, %s, %s, %s, %s)
+                            """,
+                            (self.fault.text(), self.repair.text(), self.date.text(), self.id_status, index, self.repairman.text(), self.id_type_of_repair)
+                        )
+                    else:
+                        self.repair.setText('Ввод в эксплуатацию')
+                        self.id_status = "1"
+                        self.repairman.setText('Максименко Н.А.')
+                        self.id_type_of_repair = "3"
 
-                    cur.execute(
-                        """
-                        INSERT INTO repairs ( 
-                        id, fault, repair, date, status_id, equipments_id, repairman, types_of_repairs_id) 
-                        VALUES (DEFAULT, %s, %s, %s, %s, %s, %s, %s)
-                        """,
-                        (self.fault.text(), self.repair.text(), self.date.text(), self.id_status, index, self.repairman.text(), id_type_of_repair)
-                    )
+                        cur.execute(
+                            """
+                            INSERT INTO repairs ( 
+                            id, fault, repair, date, status_id, equipments_id, repairman, types_of_repairs_id) 
+                            VALUES (DEFAULT, %s, %s, %s, %s, %s, %s, %s)
+                            """,
+                            (self.fault.text(), self.repair.text(), self.date.text(), self.id_status, index, self.repairman.text(), self.id_type_of_repair)
+                        )
 
                     #"""Добавление в оборудование"""
 
@@ -2592,7 +2640,7 @@ class Entry_Window(QMainWindow):
                     QMessageBox.information(self, "Успешно!", "Запись добавлена в журнал!")
 
                     #"""Создаем ПДФ"""
-                    self.generate_pdf()
+                    self.generate_pdf(not_new_equipment)
 
                     #self.close()
                 else:
@@ -2603,7 +2651,7 @@ class Entry_Window(QMainWindow):
             self.show_error.show_error(e)
 
     #"""Создать ПДФ"""
-    def generate_pdf(self):
+    def generate_pdf(self, not_new_equipment):
         try:
             con = psycopg2.connect(
                 host=host,
@@ -2675,7 +2723,7 @@ class Entry_Window(QMainWindow):
                     (index,)
                 )
                 self.address = cur.fetchone()[0]
-                # print(address)
+                print(self.address)
 
                 # """Кабинет"""
                 cur.execute(
@@ -2711,7 +2759,23 @@ class Entry_Window(QMainWindow):
 
                     # Добавляем текст в определённые координаты
 
+                    # Даты
                     self.can.setFont('Times', 12)
+                    if self.add_date.isChecked():
+                        day = self.date.date().toString("dd")
+                        month = self.date.date().toString("MM")
+                        self.can.drawString(435, 635, day)
+                        self.can.drawString(93, 137, day)
+                        self.can.drawString(485, 635, month)
+                        self.can.drawString(143, 137, month)
+                    year = self.date.date().toString("yyyy")
+                    self.can.drawString(530, 635, year)
+                    self.can.drawString(188, 137, year)
+                    self.can.drawString(188, 98, year)
+                    self.can.drawString(188, 60, year)
+
+
+                    #Инфа
                     self.can.drawString(120, 518, self.type)  # Координаты (x, y)
                     self.can.drawString(120, 505, self.name)
                     self.can.drawString(120, 492, self.sn)
@@ -2719,32 +2783,39 @@ class Entry_Window(QMainWindow):
                         self.can.drawString(120, 479, "-")
                     else:
                         self.can.drawString(120, 479, self.date_of_create)
+                    self.can.drawString(120, 452, self.room)
 
+                    # Работы
                     self.can.setFont('Helvetica', 18)
-                    if self.type_of_repair.currentText() == "Ремонт":
-                        self.can.drawString(60, 573, "✓")
-                    elif self.type_of_repair.currentText() == "Списание":
-                        self.can.drawString(60, 561, "✓")
-                    elif self.type_of_repair.currentText() == "Диагностика":
-                        self.can.drawString(194, 573, "✓")
-                    elif self.type_of_repair.currentText() == "Перемещение":
-                        self.can.drawString(194, 561, "✓")
-                    elif self.type_of_repair.currentText() == "Ввод в эксплуатацию":
+                    if not_new_equipment:
+                        if self.type_of_repair.currentText() == "Ремонт":
+                            self.can.drawString(60, 573, "✓")
+                        elif self.type_of_repair.currentText() == "Списание":
+                            self.can.drawString(60, 561, "✓")
+                        elif self.type_of_repair.currentText() == "Диагностика":
+                            self.can.drawString(194, 573, "✓")
+                        elif self.type_of_repair.currentText() == "Перемещение":
+                            self.can.drawString(194, 561, "✓")
+                        elif self.type_of_repair.currentText() == "Ввод в эусплуатацию":
+                            self.can.drawString(335, 573, "✓")
+                        elif self.type_of_repair.currentText() == "ТО":
+                            self.can.drawString(335, 561, "✓")
+                    else:
                         self.can.drawString(335, 573, "✓")
-                    elif self.type_of_repair.currentText() == "ТО":
-                        self.can.drawString(335, 561, "✓")
 
-                    if self.address == "1":
+                    # Улицы
+                    if self.address == 1:
                         self.can.drawString(121, 468, "✓")
-                    elif self.address == "2":
+                    elif self.address == 2:
                         self.can.drawString(210, 468, "✓")
-                    elif self.address == "3":
+                    elif self.address == 3:
                         self.can.drawString(298, 468, "✓")
-                    elif self.address == "4":
+                    elif self.address == 4:
                         self.can.drawString(375, 468, "✓")
-                    elif self.address == "5":
+                    elif self.address == 5:
                         self.can.drawString(458, 468, "✓")
 
+                    # Статусы
                     if self.status.currentText() == "Исправно":
                         self.can.drawString(28, 321, "✓")
                         self.can.drawString(142, 215, "✓")
@@ -2759,10 +2830,9 @@ class Entry_Window(QMainWindow):
                         self.can.setFont('Times', 12)
                         draw_wrapped_text(self.can, self.fault.text(), 40, 292, 90, 13)
                     self.can.setFont('Times', 12)
-                    self.can.drawString(120, 452, self.room)
+
                     draw_wrapped_text(self.can, self.fault.text(), 40, 425, 90, 13)
                     draw_wrapped_text(self.can, self.repair.text(), 40, 384, 90, 13)
-
 
                     self.can.save()
 
