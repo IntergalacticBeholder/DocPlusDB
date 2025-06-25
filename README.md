@@ -1,4 +1,4 @@
-# DocPlusDB v2.0.0
+# DocPlusDB
 
 ## Описание
 Является Пет-проектом, разработанным для облегчения рабочих процессов и структурированию данных. Написан на Python с использованием библиотек "psycopg2" для работы с базой данных и "PyQt5" для создания интерфейса. База данных разработана и администрируется в PostgreSQL, и настроена на доступ всем локальным машинам.
@@ -54,25 +54,29 @@
 
 <details><summary><b>Скриншоты</b></summary>
 
-![Image alt](https://github.com/GarvelLoken1/DocPlusDB/raw/main/DocPlusDB1.jpg "Окно аутентификации") 
+![Image alt](https://github.com/GarvelLoken1/DocPlusDB/raw/main/screenshots/DocPlusDB1.jpg "Окно аутентификации") 
 
-|*Скриншот окна аутентификации*|
+- *__Скриншот окна аутентификации__*
 
-![Image alt](https://github.com/GarvelLoken1/DocPlusDB/raw/main/DocPlusDB2.jpg "Окно БД") 
 
-|*Скриншот окна базы данных*|
+![Image alt](https://github.com/GarvelLoken1/DocPlusDB/raw/main/screenshots/DocPlusDB2.jpg "Окно БД") 
 
-![Image alt](https://github.com/GarvelLoken1/DocPlusDB/raw/main/DocPlusDB3.jpg "Окно журнала") 
+- *__Скриншот окна базы данных__*
 
-|*Скриншот окна журнала*|
 
-![Image alt](https://github.com/GarvelLoken1/DocPlusDB/raw/main/DocPlusDB4.jpg "Окно оборудования") 
+![Image alt](https://github.com/GarvelLoken1/DocPlusDB/raw/main/screenshots/DocPlusDB3.jpg "Окно журнала") 
 
-|*Скриншот окна оборудования*|
+- *__Скриншот окна журнала__*
 
-![Image alt](https://github.com/GarvelLoken1/DocPlusDB/raw/main/DocPlusDB5.jpg "Окно добавления работ") 
 
-|*Скриншот окна добавления работ*|
+![Image alt](https://github.com/GarvelLoken1/DocPlusDB/raw/main/screenshots/DocPlusDB4.jpg "Окно оборудования") 
+
+- *__Скриншот окна оборудования__*
+
+
+![Image alt](https://github.com/GarvelLoken1/DocPlusDB/raw/main/screenshots/DocPlusDB5.jpg "Окно добавления работ") 
+
+- *__Скриншот окна добавления работ__*
 
 </details>
 
