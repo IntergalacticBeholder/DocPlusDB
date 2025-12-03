@@ -59,7 +59,7 @@ db_name = config["db_name"]
 port = config["port"]
 
 # Версия
-current_version = "2.3.0"
+current_version = "2.4.0"
 # Права админа
 admin = None
 
@@ -520,6 +520,8 @@ class Main_Window(QMainWindow):
         #"""Фильтр поиска №3"""
         self.search_for_what3 = QtWidgets.QComboBox(self.search_groupe)
         self.search_for_what3.setMinimumWidth(150)
+        self.search_for_what3.setEnabled(False)
+        #self.search_for_what3.currentTextChanged.connect(self.add_room_update)
 
         #"""Фильтр поиска №4"""
         self.search_for_what4 = QtWidgets.QComboBox(self.search_groupe)
@@ -697,7 +699,8 @@ class Main_Window(QMainWindow):
         #"""Фильтр поиска ремонтов №1"""
         self.search_for_what_repair = QtWidgets.QComboBox(self.tab_repairs)
         self.search_for_what_repair.setMinimumWidth(130)
-        self.search_for_what_repair.addItems(['Всё', 'По Адресу', 'По Оборудованию', 'По Имени', 'По Статусу', 'По Типу Работ'])
+        self.search_for_what_repair.addItems(
+            ['Всё', 'По Адресу', 'По Оборудованию', 'По Имени', 'По Дате', 'По Статусу', 'По Типу Работ'])
         self.search_for_what_repair.currentTextChanged.connect(lambda: self.sfw2(
             self.search_repair, self.search_for_what_repair, self.search_for_what_repair2, self.search_for_what_repair3, self.btn_more_filters_repair))
         self.search_for_what_repair.currentTextChanged.connect(lambda: self.update_filters(self.search_for_what_repair, self.search_for_what_repair4, self.start_more_filters_repairs))
@@ -706,15 +709,31 @@ class Main_Window(QMainWindow):
 
         #"""Фильтр поиска ремонтов №2"""
         self.search_for_what_repair2 = QtWidgets.QComboBox(self.tab_repairs)
-        self.search_for_what_repair2.setMinimumWidth(250)
+        self.search_for_what_repair2.setMinimumWidth(350)
         self.search_for_what_repair2.currentTextChanged.connect(lambda: self.sfw3(
             self.search_for_what_repair, self.search_for_what_repair2, self.search_for_what_repair3))
         self.search_for_what_repair2.setEnabled(False)
+
+        self.search_for_what_repair2_data = QDateEdit(self.tab_repairs)
+        self.search_for_what_repair2_data.setDisplayFormat("yyyy-MM-dd")
+        self.search_for_what_repair2_data.setDate(QtCore.QDate.currentDate())
+        self.search_for_what_repair2_data.setCalendarPopup(True)
+        self.search_for_what_repair2_data.setMinimumWidth(90)
+        self.search_for_what_repair2_data.setEnabled(False)
+        self.search_for_what_repair2_data.hide()
 
         #"""Фильтр поиска ремонтов №3"""
         self.search_for_what_repair3 = QtWidgets.QComboBox(self.tab_repairs)
         self.search_for_what_repair3.setMinimumWidth(150)
         self.search_for_what_repair3.setEnabled(False)
+
+        self.search_for_what_repair3_data = QDateEdit(self.tab_repairs)
+        self.search_for_what_repair3_data.setDisplayFormat("yyyy-MM-dd")
+        self.search_for_what_repair3_data.setDate(QtCore.QDate.currentDate())
+        self.search_for_what_repair3_data.setCalendarPopup(True)
+        self.search_for_what_repair3_data.setMinimumWidth(90)
+        self.search_for_what_repair3_data.setEnabled(False)
+        self.search_for_what_repair3_data.hide()
 
         #"""Фильтр поиска ремонтов №4"""
         self.search_for_what_repair4 = QtWidgets.QComboBox(self.tab_repairs)
@@ -728,7 +747,7 @@ class Main_Window(QMainWindow):
 
         #"""Фильтр поиска ремонтов №5"""
         self.search_for_what_repair5 = QtWidgets.QComboBox(self.tab_repairs)
-        self.search_for_what_repair5.setMinimumWidth(350)
+        self.search_for_what_repair5.setMinimumWidth(230)
         self.search_for_what_repair5.currentTextChanged.connect(lambda: self.sfw3(
             self.search_for_what_repair4, self.search_for_what_repair5, self.search_for_what_repair6))
         self.search_for_what_repair5.setVisible(False)
@@ -774,7 +793,9 @@ class Main_Window(QMainWindow):
         self.layout_repair.addWidget(self.btn_more_filters_repair, 1, 0)
         self.layout_repair.addWidget(self.search_for_what_repair, 1, 1)
         self.layout_repair.addWidget(self.search_for_what_repair2, 1, 2)
+        self.layout_repair.addWidget(self.search_for_what_repair2_data, 1, 2)
         self.layout_repair.addWidget(self.search_for_what_repair3, 1, 3)
+        self.layout_repair.addWidget(self.search_for_what_repair3_data, 1, 3)
         self.layout_repair.addWidget(self.search_for_what_repair4, 2, 1)
         self.layout_repair.addWidget(self.search_for_what_repair5, 2, 2)
         self.layout_repair.addWidget(self.search_for_what_repair6, 2, 3)
@@ -786,6 +807,7 @@ class Main_Window(QMainWindow):
         self.layout_repair.addWidget(self.btn_clear_repair, 4, 5, 1, 1)
 
         self.add_all()
+        self.add_room_update()
         self.add_type_update()
         self.sfw2(self.search, self.search_for_what, self.search_for_what2, self.search_for_what3, self.btn_more_filters)
         self.start_search(self.table, self.search_for_what, self.search_for_what2,
@@ -830,7 +852,7 @@ class Main_Window(QMainWindow):
             except Exception as e:
                 self.show_error.show_error(e)
 
-    #"""Обновление Добавление комнаты, относительно улицы"""
+    #"""Обновление добавления комнаты, относительно улицы"""
     def add_room_update(self):
         self.add_CB_room.clear()
         try:
@@ -856,10 +878,13 @@ class Main_Window(QMainWindow):
                 rooms = cur.fetchall()
                 rooms = [room[0] for room in rooms]
                 self.add_CB_room.addItems(rooms)
+                if self.search_for_what3.isEnabled:
+                    self.sfw3(self.search_for_what, self.search_for_what2, self.search_for_what3)
+
         except Exception as e:
             self.show_error.show_error(e)
 
-    #"""Обновление оборудования"""
+    #"""Обновление добавления оборудования"""
     def add_type_update(self):
         self.add_CB_type.clear()
         try:
@@ -875,6 +900,10 @@ class Main_Window(QMainWindow):
                 types = cur.fetchall()
                 types = [type[0] for type in types]
                 self.add_CB_type.addItems(types)
+                if self.search_for_what2.isEnabled and self.search_for_what.currentText() == 'По Оборудованию':
+                    self.sfw2(
+                        self.search, self.search_for_what, self.search_for_what2, self.search_for_what3,
+                        self.btn_more_filters)
         except Exception as e:
             self.show_error.show_error(e)
 
@@ -927,11 +956,12 @@ class Main_Window(QMainWindow):
                 params = []
 
                 #"""Первый фильтр"""
-                if search_for_what2.isEnabled():
+                if search_for_what2.isEnabled() and search_for_what.currentText() != 'По Дате':
                     search_field = {
                         'По Адресу': 'streets.street',
                         'По Оборудованию': 'types.type',
                         'По Имени': 'names.name',
+                        'По Дате': 'repairs.date',
                         'По Статусу': 'status.status',
                         'По Типу Работ': 'types_of_repairs.type_of_repair'
                     }.get(search_for_what.currentText())
@@ -950,6 +980,13 @@ class Main_Window(QMainWindow):
 
                         # Добавление к параметрам для запроса по второму фильтру
                         params.append(str(search_for_what3.currentText()))
+                if search_for_what.currentText() == 'По Дате':
+                    print('поиск по датам')
+                    query += " WHERE repairs.date BETWEEN %s AND %s"
+                    start_date = self.search_for_what_repair2_data.date().toString("yyyy-MM-dd")
+                    end_date = self.search_for_what_repair3_data.date().toString("yyyy-MM-dd")
+                    params.append(start_date)
+                    params.append(end_date)
 
                     #"""Третий фильтр"""
 
@@ -1047,7 +1084,12 @@ class Main_Window(QMainWindow):
                 database=db_name
             )
             with con.cursor() as cur:
-
+                self.search_for_what_repair2.show()
+                self.search_for_what_repair2_data.hide()
+                self.search_for_what_repair3.show()
+                self.search_for_what_repair3_data.hide()
+                self.search_for_what_repair2_data.setEnabled(False)
+                self.search_for_what_repair3_data.setEnabled(False)
                 #"""Поиск без фильтров"""
                 if search_for_what.currentText() == 'Всё':
                     search.setEnabled(False)
@@ -1086,6 +1128,23 @@ class Main_Window(QMainWindow):
                     types = cur.fetchall()
                     types = [type[0] for type in types]
                     search_for_what_2.addItems(types)
+
+
+                elif search_for_what.currentText() == 'По Дате':
+                    search.setEnabled(False)
+                    search_for_what_2.setEnabled(True)
+                    search_for_what_3.setEnabled(True)
+                    search_for_what_2.clear()
+                    search_for_what_3.clear()
+                    search.clear()
+                    btn_more_filters.setVisible(True)
+                    self.search_for_what_repair2.hide()
+                    self.search_for_what_repair2_data.show()
+                    self.search_for_what_repair2_data.setEnabled(True)
+                    self.search_for_what_repair3.hide()
+                    self.search_for_what_repair3_data.show()
+                    self.search_for_what_repair3_data.setEnabled(True)
+
 
                 #"""Поиск по имени"""
                 elif search_for_what.currentText() == 'По Имени':
@@ -1360,6 +1419,10 @@ class Main_Window(QMainWindow):
         self.equipment_window.closed.connect(lambda: self.start_search(self.table, self.search_for_what, self.search_for_what2,
                                                                   self.search_for_what3, self.search_for_what4, self.search_for_what5, self.search_for_what6,
                                                                   self.search, self.search2, self.start_resize_timer, self.resize_timer, self.btn_save, self.status_row_colors))
+        self.equipment_window.closed.connect(lambda: self.start_search(self.table_repair, self.search_for_what_repair, self.search_for_what_repair2,
+                                    self.search_for_what_repair3, self.search_for_what_repair4, self.search_for_what_repair5, self.search_for_what_repair6,
+                                    self.search_repair, self.search_repair2, self.start_resize_timer, self.resize_timer_repair,
+                                    self.btn_save_repair, self.status_row_colors))
         self.equipment_window.show()
 
     #"""Акт ввода при добавлении оборудования"""
@@ -1614,6 +1677,7 @@ class Add_Something(QMainWindow):
                     add_message.setWindowIcon(QtGui.QIcon(resource_path('logo.png')))
                     add_message.setStandardButtons(QMessageBox.Ok)
                     add_message.exec_()
+                    self.main_window.add_room_update()
                     self.add_something_LE.clear()
                 else:
                     print('ОТМЕНА!')
@@ -1737,7 +1801,7 @@ class Equipment_Window(QMainWindow):
         self.ru_stack.addWidget(self.ru)
         self.layout.addLayout(self.ru_stack, 7, 1)
 
-
+        # """Таблица"""
         self.table = QtWidgets.QTableWidget(self.centralwidget)
         self.layout.addWidget(self.table, 8, 0, 4, 4)
         self.table.setMinimumHeight(250)
@@ -1766,6 +1830,7 @@ class Equipment_Window(QMainWindow):
         self.main_window = Main_Window()
 
         self.info()
+        self.info_repairs()
 
         for x in [
             self.lable_address,
@@ -1945,9 +2010,25 @@ class Equipment_Window(QMainWindow):
                 #print(status)
                 self.status.setCurrentText(status)
                 self.status_text.setText(status)
+                #self.info_repairs()
+        except Exception as e:
+            if not IndexError:
+                self.show_error.show_error(e)
+
 
                 #"""РЕМОНТЫ"""
 
+    def info_repairs(self):
+        self.table.setRowCount(0)  # Очищаем только строки
+        self.table.setColumnCount(0)  # И столбцы
+        try:
+            con = psycopg2.connect(
+                host=host,
+                user=user,
+                password=password,
+                database=db_name
+            )
+            with con.cursor() as cur:
                 cur.execute(
                     """SELECT repairs.id, repairs.date, repairs.fault, repairs.repair, types_of_repairs.type_of_repair, status.status, repairs.repairman 
                     FROM repairs 
@@ -1983,6 +2064,7 @@ class Equipment_Window(QMainWindow):
                 self.table.resizeColumnsToContents()
                 self.table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
                 self.status_row_colors(self.table)
+                print(f"Таблица для № {index} создана")
         except Exception as e:
             if not IndexError:
                 self.show_error.show_error(e)
@@ -2008,7 +2090,9 @@ class Equipment_Window(QMainWindow):
             (self.ru_stack, self.ru),
         ]:
             stack.setCurrentWidget(widget)
-        self.btn_change.setEnabled(False)
+        for y in [self.btn_change, self.btn_add]:
+            y.setDisabled(True)
+        #self.btn_change.setEnabled(False)
 
     #"""Инфа о кабинете"""
     def room_info(self):
@@ -2290,7 +2374,8 @@ class Equipment_Window(QMainWindow):
             (self.ru_stack, self.ru_text),
         ]:
             stack.setCurrentWidget(widget)
-        self.btn_change.setEnabled(True)
+        for y in [self.btn_change, self.btn_add]:
+            y.setEnabled(True)
 
     #"""Добавить записть"""
     def show_entry(self):
@@ -2298,6 +2383,7 @@ class Equipment_Window(QMainWindow):
         #print(index)
         self.entry_window = Entry_Window()
         self.entry_window.closed.connect(self.info)
+        self.entry_window.closed.connect(self.info_repairs)
         self.entry_window.show()
 
     #"""Красим Табличку"""
@@ -2336,14 +2422,6 @@ class Equipment_Window(QMainWindow):
         self.closed.emit()  # Испускаем сигнал при закрытии
         self.close()
         super().closeEvent(event)
-        self.main_window.start_search(self.main_window.table, self.main_window.search_for_what, self.main_window.search_for_what2,
-                                    self.main_window.search_for_what3, self.main_window.search_for_what4, self.main_window.search_for_what5, self.main_window.search_for_what6,
-                                    self.main_window.search, self.main_window.search2, self.main_window.start_resize_timer, self.main_window.resize_timer,
-                                    self.main_window.btn_save, self.main_window.status_row_colors)
-        self.main_window.start_search(self.main_window.table_repair, self.main_window.search_for_what_repair, self.main_window.search_for_what_repair2,
-                                    self.main_window.search_for_what_repair3, self.main_window.search_for_what_repair4, self.main_window.search_for_what_repair5, self.main_window.search_for_what_repair6,
-                                    self.main_window.search_repair, self.main_window.search_repair2, self.main_window.start_resize_timer, self.main_window.resize_timer_repair,
-                                    self.main_window.btn_save_repair, self.main_window.status_row_colors)
 
 #"""Окно ввода работ"""
 class Entry_Window(QMainWindow):
@@ -2357,7 +2435,7 @@ class Entry_Window(QMainWindow):
         self.setWindowIcon(QtGui.QIcon(resource_path('logo.png')))
         self.font = QtGui.QFont("Times", 10)
         self.centralwidget.setFont(self.font)
-
+        self.equipment_window = Equipment_Window()
         # """Для ошибок"""
         self.show_error = Show_Error()
 
@@ -2394,7 +2472,7 @@ class Entry_Window(QMainWindow):
         self.repairman = QtWidgets.QLineEdit(self.centralwidget)
         self.repairman.setText("Максименко Н.А.")
         self.repairman_check_running = False
-        self.repairman.editingFinished.connect(self.check_repairmain)
+        self.repairman.editingFinished.connect(self.check_repairman)
 
 
         self.lable_date = QtWidgets.QLabel(self.centralwidget)
@@ -2506,18 +2584,19 @@ class Entry_Window(QMainWindow):
             )
             with con.cursor() as cur:
                 cur.execute("SELECT DISTINCT name FROM repairmans")
-                repairmens = cur.fetchall()
-                repairmen = [repairmen[0] for repairmen in repairmens]  # Преобразуем в список строк
-                repairmain_completer = QCompleter(repairmen)
-                repairmain_completer.setCaseSensitivity(QtCore.Qt.CaseInsensitive)
-                self.repairman.setCompleter(repairmain_completer)
-                self.repairmain_selected = repairmen[0]
+                repairmans = cur.fetchall()
+                repairman = [repairman[0] for repairman in repairmans]  # Преобразуем в список строк
+                repairman_completer = QCompleter(repairman)
+                repairman_completer.setCaseSensitivity(QtCore.Qt.CaseInsensitive)
+                self.repairman.setCompleter(repairman_completer)
+                self.repairman_list = repairman
+                #print(self.repairman_list)
                 self.layout.addWidget(self.repairman, 5, 2)
         except Exception as e:
             self.show_error.show_error(e)
 
     #"""Проверка на наличие исполнителя в базе"""
-    def check_repairmain(self):
+    def check_repairman(self):
         if self.repairman_check_running:
             return
         self.repairman_check_running = True
@@ -2529,7 +2608,7 @@ class Entry_Window(QMainWindow):
                 database=db_name
             )
             with con.cursor() as cur:
-                if self.repairman.text() not in self.repairmain_selected:
+                if self.repairman.text() not in self.repairman_list:
                     add_repairman_message = QMessageBox()
                     add_repairman_message.setWindowTitle("Внимание!")
                     add_repairman_message.setText("Такого исполнителя не существует! \nДобавить?")
@@ -2593,7 +2672,7 @@ class Entry_Window(QMainWindow):
 
                 add_message = QMessageBox()
                 add_message.setWindowTitle("Добавление в журнал")
-                add_message.setText("'Добавить в журнал?" if not_new_equipment else "Это новое оборудование?\nВвести в эксплуатацию сегодняшним днем?")
+                add_message.setText("Добавить в журнал?" if not_new_equipment else "Это новое оборудование?\nВвести в эксплуатацию сегодняшним днем?")
                 add_message.setIcon(QMessageBox.Question)
                 add_message.setWindowIcon(QtGui.QIcon(resource_path('logo.png')))
                 add_message.setStandardButtons(QMessageBox.Cancel | QMessageBox.Ok)
@@ -2634,7 +2713,6 @@ class Entry_Window(QMainWindow):
                         """,
                         (self.id_status, index)
                     )
-                    #print(f"Ошибка: {str(self.fault.setPlainText())}, Ремонт: {str(self.repair.setPlainText())}, Дата: {str(self.date.text())}, Инженер: {str(self.repairman.text())}")
                     con.commit()
                     print('УСПЕШНО ДОБАВЛЕННО В ЖУРНАЛ!')
                     QMessageBox.information(self, "Успешно!", "Запись добавлена в журнал!")
@@ -2882,6 +2960,8 @@ class Entry_Window(QMainWindow):
         print("Закрытие 'Entry_Window'")
         self.closed.emit()
         super().closeEvent(event)
+
+
 
 #"""Ошибки"""
 class Show_Error(QObject):
