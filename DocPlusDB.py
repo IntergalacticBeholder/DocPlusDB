@@ -9,7 +9,7 @@ import subprocess
 import time
 
 from appdirs import user_config_dir
-from psycopg2 import OperationalError
+from psycopg2 import OperationalError, errors
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtWidgets import *
@@ -43,7 +43,7 @@ def save_config(config):
 
 if not config:
     config = {
-        "host": "10.10.0.63",
+        "host": "10.10.0.85",
         "user": "postgres",
         "password": "admin",
         "db_name": "docplus",
@@ -59,7 +59,7 @@ db_name = config["db_name"]
 port = config["port"]
 
 # Версия
-current_version = "2.4.0"
+current_version = "2.4.1"
 # Права админа
 admin = None
 
@@ -499,8 +499,8 @@ class Main_Window(QMainWindow):
 
         #"""Поисковая строка №2"""
         self.search2 = QtWidgets.QLineEdit(self.search_groupe)
-        self.search2.setVisible(False)
         self.search2.setEnabled(False)
+        self.search2.setVisible(False)
 
         #"""Фильтр поиска №1"""
         self.search_for_what = QtWidgets.QComboBox(self.search_groupe)
@@ -530,26 +530,25 @@ class Main_Window(QMainWindow):
         self.search_for_what4.currentTextChanged.connect(lambda: self.sfw2(
             self.search2, self.search_for_what4, self.search_for_what5, self.search_for_what6, self.btn_more_filters))
         self.search_for_what4.currentTextChanged.connect(lambda: self.update_filters(self.search_for_what, self.search_for_what4, self.start_more_filters))
-        self.search_for_what4.setVisible(False)
         self.search_for_what4.setEnabled(False)
+        self.search_for_what4.setVisible(False)
 
         #"""Фильтр поиска №5"""
         self.search_for_what5 = QtWidgets.QComboBox(self.search_groupe)
         self.search_for_what5.setMinimumWidth(350)
         self.search_for_what5.currentTextChanged.connect(lambda: self.sfw3(
             self.search_for_what4, self.search_for_what5, self.search_for_what6))
-        self.search_for_what5.setVisible(False)
         self.search_for_what5.setEnabled(False)
-
+        self.search_for_what5.setVisible(False)
         #"""Фильтр поиска №6"""
         self.search_for_what6 = QtWidgets.QComboBox(self.search_groupe)
         self.search_for_what6.setMinimumWidth(150)
-        self.search_for_what6.setVisible(False)
         self.search_for_what6.setEnabled(False)
+        self.search_for_what6.setVisible(False)
 
         #"""Кнопка развернуть доп фильтры"""
         self.btn_more_filters = QtWidgets.QPushButton(self.search_groupe)
-        self.btn_more_filters.setFixedWidth(25)
+        self.btn_more_filters.setFixedWidth(24)
         self.btn_more_filters.setText("+")
         self.btn_more_filters.clicked.connect(self.more_filters)
         self.start_more_filters = False
@@ -573,7 +572,6 @@ class Main_Window(QMainWindow):
         self.layout_search.addWidget(self.btn_save, 4, 0, 1, 2)
         self.layout_search.addWidget(self.btn_clear, 4, 5)
         self.layout_search.addWidget(self.btn_more_filters, 1, 0)
-
 
         ###"""ДОБАВЛЕНИЕ"""###
 
@@ -599,7 +597,7 @@ class Main_Window(QMainWindow):
 
         #"""Добавить кабинет"""
         self.btn_more_rooms = QtWidgets.QPushButton(self.search_groupe)
-        self.btn_more_rooms.setFixedWidth(25)
+        self.btn_more_rooms.setFixedWidth(24)
         self.btn_more_rooms.setText("+")
         self.more_rooms_rule = False
         self.btn_more_rooms.clicked.connect(lambda: self.add_something_show("room"))
@@ -615,7 +613,7 @@ class Main_Window(QMainWindow):
 
         #"""Добавить тип оборудования"""
         self.btn_more_types = QtWidgets.QPushButton(self.search_groupe)
-        self.btn_more_types.setFixedWidth(25)
+        self.btn_more_types.setFixedWidth(24)
         self.btn_more_types.setText("+")
         self.more_types_rule = False
         self.btn_more_types.clicked.connect(lambda: self.add_something_show("type"))
@@ -713,6 +711,7 @@ class Main_Window(QMainWindow):
         self.search_for_what_repair2.currentTextChanged.connect(lambda: self.sfw3(
             self.search_for_what_repair, self.search_for_what_repair2, self.search_for_what_repair3))
         self.search_for_what_repair2.setEnabled(False)
+        self.search_for_what_repair2.show()
 
         self.search_for_what_repair2_data = QDateEdit(self.tab_repairs)
         self.search_for_what_repair2_data.setDisplayFormat("yyyy-MM-dd")
@@ -720,7 +719,6 @@ class Main_Window(QMainWindow):
         self.search_for_what_repair2_data.setCalendarPopup(True)
         self.search_for_what_repair2_data.setMinimumWidth(90)
         self.search_for_what_repair2_data.setEnabled(False)
-        self.search_for_what_repair2_data.hide()
 
         #"""Фильтр поиска ремонтов №3"""
         self.search_for_what_repair3 = QtWidgets.QComboBox(self.tab_repairs)
@@ -732,8 +730,7 @@ class Main_Window(QMainWindow):
         self.search_for_what_repair3_data.setDate(QtCore.QDate.currentDate())
         self.search_for_what_repair3_data.setCalendarPopup(True)
         self.search_for_what_repair3_data.setMinimumWidth(90)
-        self.search_for_what_repair3_data.setEnabled(False)
-        self.search_for_what_repair3_data.hide()
+
 
         #"""Фильтр поиска ремонтов №4"""
         self.search_for_what_repair4 = QtWidgets.QComboBox(self.tab_repairs)
@@ -750,14 +747,26 @@ class Main_Window(QMainWindow):
         self.search_for_what_repair5.setMinimumWidth(230)
         self.search_for_what_repair5.currentTextChanged.connect(lambda: self.sfw3(
             self.search_for_what_repair4, self.search_for_what_repair5, self.search_for_what_repair6))
-        self.search_for_what_repair5.setVisible(False)
         self.search_for_what_repair5.setEnabled(False)
+
+        self.search_for_what_repair5_data = QDateEdit(self.tab_repairs)
+        self.search_for_what_repair5_data.setDisplayFormat("yyyy-MM-dd")
+        self.search_for_what_repair5_data.setDate(QtCore.QDate.currentDate())
+        self.search_for_what_repair5_data.setCalendarPopup(True)
+        self.search_for_what_repair5_data.setMinimumWidth(90)
+        self.search_for_what_repair5_data.setEnabled(False)
 
         #"""Фильтр поиска ремонтов №6"""
         self.search_for_what_repair6 = QtWidgets.QComboBox(self.tab_repairs)
         self.search_for_what_repair6.setMinimumWidth(150)
-        self.search_for_what_repair6.setVisible(False)
         self.search_for_what_repair6.setEnabled(False)
+
+        self.search_for_what_repair6_data = QDateEdit(self.tab_repairs)
+        self.search_for_what_repair6_data.setDisplayFormat("yyyy-MM-dd")
+        self.search_for_what_repair6_data.setDate(QtCore.QDate.currentDate())
+        self.search_for_what_repair6_data.setCalendarPopup(True)
+        self.search_for_what_repair6_data.setMinimumWidth(90)
+        self.search_for_what_repair6_data.setEnabled(False)
 
         #"""Поисковая строка ремонтов"""
         self.search_repair = QtWidgets.QLineEdit(self.tab_repairs)
@@ -783,28 +792,56 @@ class Main_Window(QMainWindow):
 
         #"""Кнопка Развернуть Доп Фильтры"""
         self.btn_more_filters_repair = QtWidgets.QPushButton(self.tab_repairs)
-        self.btn_more_filters_repair.setFixedWidth(25)
+        self.btn_more_filters_repair.setFixedWidth(24)
         self.btn_more_filters_repair.setText("+")
         self.btn_more_filters_repair.clicked.connect(self.more_filters_repair)
         self.start_more_filters_repairs = False
 
         #"""СЛОИ"""
+
+        # Для второй колонки (комбобокс или дата)
+        self.stack_2 = QtWidgets.QStackedWidget(self.tab_repairs)
+        self.stack_2.setMaximumHeight(22)
+        self.stack_2.addWidget(self.search_for_what_repair2)  # Страница 0: комбобокс
+        self.stack_2.addWidget(self.search_for_what_repair2_data)  # Страница 1: дата
+
+        # Для третьей колонки (комбобокс или дата)
+        self.stack_3 = QtWidgets.QStackedWidget(self.tab_repairs)
+        self.stack_3.setMaximumHeight(22)
+        self.stack_3.addWidget(self.search_for_what_repair3)  # Страница 0: комбобокс
+        self.stack_3.addWidget(self.search_for_what_repair3_data)  # Страница 1: дата
+
+        # Для пятой колонки во второй строке
+        self.stack_5 = QtWidgets.QStackedWidget(self.tab_repairs)
+        self.stack_5.setMaximumHeight(22)
+        self.stack_5.addWidget(self.search_for_what_repair5)
+        self.stack_5.addWidget(self.search_for_what_repair5_data)
+        self.stack_5.hide()
+
+        # Для шестой колонки во второй строке
+        self.stack_6 = QtWidgets.QStackedWidget(self.tab_repairs)
+        self.stack_6.setMaximumHeight(22)
+        self.stack_6.addWidget(self.search_for_what_repair6)
+        self.stack_6.addWidget(self.search_for_what_repair6_data)
+        self.stack_6.hide()
+
         self.layout_repair = QGridLayout(self.tab_repairs)
         self.layout_repair.addWidget(self.btn_more_filters_repair, 1, 0)
         self.layout_repair.addWidget(self.search_for_what_repair, 1, 1)
-        self.layout_repair.addWidget(self.search_for_what_repair2, 1, 2)
-        self.layout_repair.addWidget(self.search_for_what_repair2_data, 1, 2)
-        self.layout_repair.addWidget(self.search_for_what_repair3, 1, 3)
-        self.layout_repair.addWidget(self.search_for_what_repair3_data, 1, 3)
-        self.layout_repair.addWidget(self.search_for_what_repair4, 2, 1)
-        self.layout_repair.addWidget(self.search_for_what_repair5, 2, 2)
-        self.layout_repair.addWidget(self.search_for_what_repair6, 2, 3)
+        self.layout_repair.addWidget(self.stack_2, 1, 2)
+        self.layout_repair.addWidget(self.stack_3, 1, 3)
         self.layout_repair.addWidget(self.search_repair, 1, 4)
-        self.layout_repair.addWidget(self.search_repair2, 2, 4)
         self.layout_repair.addWidget(self.btn_search_repair, 1, 5)
+
+        self.layout_repair.addWidget(self.search_for_what_repair4, 2, 1)
+        self.layout_repair.addWidget(self.stack_5, 2, 2)
+        self.layout_repair.addWidget(self.stack_6, 2, 3)
+        self.layout_repair.addWidget(self.search_repair2, 2, 4)
+
         self.layout_repair.addWidget(self.table_repair, 3, 0, 1, 6)
         self.layout_repair.addWidget(self.btn_save_repair, 4, 0, 1, 2)
         self.layout_repair.addWidget(self.btn_clear_repair, 4, 5, 1, 1)
+
 
         self.add_all()
         self.add_room_update()
@@ -903,7 +940,7 @@ class Main_Window(QMainWindow):
                 if self.search_for_what2.isEnabled and self.search_for_what.currentText() == 'По Оборудованию':
                     self.sfw2(
                         self.search, self.search_for_what, self.search_for_what2, self.search_for_what3,
-                        self.btn_more_filters)
+                        self.btn_more_filters, None, None)
         except Exception as e:
             self.show_error.show_error(e)
 
@@ -1084,30 +1121,29 @@ class Main_Window(QMainWindow):
                 database=db_name
             )
             with con.cursor() as cur:
-                self.search_for_what_repair2.show()
-                self.search_for_what_repair2_data.hide()
-                self.search_for_what_repair3.show()
-                self.search_for_what_repair3_data.hide()
-                self.search_for_what_repair2_data.setEnabled(False)
-                self.search_for_what_repair3_data.setEnabled(False)
+                if search_for_what is self.search_for_what_repair:
+                    self.stack_2.setCurrentIndex(0)
+                    self.stack_3.setCurrentIndex(0)
+                else:
+                    self.stack_5.setCurrentIndex(0)
+                    self.stack_6.setCurrentIndex(0)
                 #"""Поиск без фильтров"""
                 if search_for_what.currentText() == 'Всё':
-                    search.setEnabled(False)
-                    search_for_what_2.setEnabled(False)
-                    search_for_what_3.setEnabled(False)
-                    search_for_what_2.clear()
-                    search_for_what_3.clear()
-                    search.clear()
-                    #self.more_filters()
+                    for x in [search, search_for_what_2, search_for_what_3]:
+                        x.setEnabled(False)
+                        x.clear()
+
+
                 #"""Поиск по адресу"""
 
                 elif search_for_what.currentText() == 'По Адресу':
-                    search.setEnabled(False)
-                    search_for_what_2.setEnabled(True)
-                    search_for_what_3.setEnabled(True)
-                    search_for_what_2.clear()
-                    search_for_what_3.clear()
-                    search.clear()
+                    for x in [search]:
+                        x.setEnabled(False)
+                        x.clear()
+                    for y in [search_for_what_2, search_for_what_3]:
+                        y.setEnabled(True)
+                        y.clear()
+
                     btn_more_filters.setVisible(True)
                     cur.execute("SELECT street FROM streets")
                     streets = cur.fetchall()
@@ -1116,12 +1152,14 @@ class Main_Window(QMainWindow):
 
                 #"""Поиск по типу"""
                 elif search_for_what.currentText() == 'По Оборудованию':
-                    search.setEnabled(False)
-                    search_for_what_2.setEnabled(True)
-                    search_for_what_3.setEnabled(False)
-                    search_for_what_2.clear()
-                    search_for_what_3.clear()
-                    search.clear()
+                    for x in [search, search_for_what_3]:
+                        x.setEnabled(False)
+                        x.clear()
+                    for y in [search_for_what_2]:
+                        y.setEnabled(True)
+                        y.clear()
+
+
                     btn_more_filters.setVisible(True)
                     cur.execute("SELECT type FROM types "
                                 "ORDER BY type ASC ")
@@ -1129,31 +1167,32 @@ class Main_Window(QMainWindow):
                     types = [type[0] for type in types]
                     search_for_what_2.addItems(types)
 
-
                 elif search_for_what.currentText() == 'По Дате':
-                    search.setEnabled(False)
-                    search_for_what_2.setEnabled(True)
-                    search_for_what_3.setEnabled(True)
-                    search_for_what_2.clear()
-                    search_for_what_3.clear()
-                    search.clear()
-                    btn_more_filters.setVisible(True)
-                    self.search_for_what_repair2.hide()
-                    self.search_for_what_repair2_data.show()
-                    self.search_for_what_repair2_data.setEnabled(True)
-                    self.search_for_what_repair3.hide()
-                    self.search_for_what_repair3_data.show()
-                    self.search_for_what_repair3_data.setEnabled(True)
+                    for y in [search_for_what_2, search_for_what_3]:
+                        y.setEnabled(True)
+                        y.clear()
+                    for x in [search]:
+                        x.setEnabled(False)
+                        x.clear()
+
+                    if search_for_what is self.search_for_what_repair:
+                        self.stack_2.setCurrentIndex(1)  # Показываем дату для второй колонки
+                        self.stack_3.setCurrentIndex(1)  # Показываем дату для третьей колонки
+                        self.search_for_what_repair2_data.setEnabled(True)
+                        self.search_for_what_repair3_data.setEnabled(True)
+                    else:
+                        self.stack_5.setCurrentIndex(1)
+                        self.stack_6.setCurrentIndex(1)
 
 
                 #"""Поиск по имени"""
                 elif search_for_what.currentText() == 'По Имени':
-                    search.setEnabled(True)
-                    search_for_what_2.setEnabled(False)
-                    search_for_what_3.setEnabled(False)
-                    search.setEnabled(True)
-                    search_for_what_2.clear()
-                    search_for_what_3.clear()
+                    for x in [search_for_what_2, search_for_what_3]:
+                        x.setEnabled(False)
+                        x.clear()
+                    for y in [search]:
+                        y.setEnabled(True)
+
                     btn_more_filters.setVisible(True)
                     cur.execute("SELECT DISTINCT name FROM names")
                     names = cur.fetchall()
@@ -1165,13 +1204,13 @@ class Main_Window(QMainWindow):
 
                 #"""По статусу"""
                 elif search_for_what.currentText() == 'По Статусу':
-                    search.setEnabled(False)
-                    search_for_what_2.setEnabled(True)
-                    search_for_what_3.setEnabled(False)
-                    search.setEnabled(False)
-                    search_for_what_2.clear()
-                    search_for_what_3.clear()
-                    search.clear()
+                    for x in [search, search_for_what_3]:
+                        x.setEnabled(False)
+                        x.clear()
+                    for y in [search_for_what_2]:
+                        y.setEnabled(True)
+                        y.clear()
+
                     btn_more_filters.setVisible(True)
                     cur.execute("SELECT status FROM status "
                                 "ORDER BY status ASC ")
@@ -1180,17 +1219,22 @@ class Main_Window(QMainWindow):
                     search_for_what_2.addItems(statuses)
 
                 elif search_for_what.currentText() == 'По Типу Работ':
-                    search.setEnabled(False)
-                    search_for_what_2.setEnabled(True)
-                    search_for_what_3.setEnabled(False)
-                    search_for_what_2.clear()
+                    for x in [search, search_for_what_3]:
+                        x.setEnabled(False)
+                        x.clear()
+                    for y in [search_for_what_2]:
+                        y.setEnabled(True)
+                        y.clear()
+
                     cur.execute("SELECT type_of_repair FROM types_of_repairs "
                                 "ORDER BY type_of_repair ASC ")
                     types_of_repairs = cur.fetchall()
                     types_of_repairs = [type_of_repair[0] for type_of_repair in types_of_repairs]
                     search_for_what_2.addItems(types_of_repairs)
+
         except Exception as e:
             self.show_error.show_error(e)
+
 
     def sfw3(self, search_for_what, search_for_what_2, search_for_what_3):
         try:
@@ -1470,10 +1514,10 @@ class Main_Window(QMainWindow):
     #"""Видимость Кнопки "Больше Фильтров""""
     def more_filters_visible(self, search_for_what, btn_more_filters, more_filters):
         if search_for_what.currentText() == "Всё":
-            btn_more_filters.setVisible(False)
+            btn_more_filters.setEnabled(False)
             more_filters()
         else:
-            btn_more_filters.setVisible(True)
+            btn_more_filters.setEnabled(True)
 
     #"""Больше Фильтров"""
     def more_filters(self):
@@ -1501,19 +1545,20 @@ class Main_Window(QMainWindow):
         if self.search_for_what_repair4.isVisible() == False and self.btn_more_filters_repair.isVisible() == True:
             self.btn_more_filters_repair.setText("-")
             self.start_more_filters_repairs = True
-            print(self.start_more_filters_repairs)
-            for x in [self.search_for_what_repair4, self.search_for_what_repair5]:
+
+            for x in [self.search_for_what_repair4, self.stack_5, self.stack_6]:
                 x.setVisible(True)
                 x.setEnabled(True)
-            for x2 in [self.search_for_what_repair6, self.search_repair2]:
-                x2.setVisible(True)
+            for y in [self.search_repair2]:
+                y.setVisible(True)
+
             self.search_for_what_repair4.setCurrentIndex(0 if int(self.search_for_what_repair.currentIndex()) != 1 else int(self.search_for_what_repair.currentIndex()))
             self.update_filters(self.search_for_what_repair, self.search_for_what_repair4, self.start_more_filters_repairs)
         elif self.search_for_what_repair4.isVisible() == True:
             self.btn_more_filters_repair.setText("+")
             self.start_more_filters_repairs = False
             print(self.start_more_filters_repairs)
-            for x in [self.search_for_what_repair4, self.search_for_what_repair5, self.search_for_what_repair6, self.search_repair2]:
+            for x in [self.search_for_what_repair4, self.stack_5, self.stack_6, self.search_repair2]:
                 x.setVisible(False)
                 x.setEnabled(False)
             self.update_filters(self.search_for_what_repair, self.search_for_what_repair4, self.start_more_filters_repairs)
@@ -2961,14 +3006,12 @@ class Entry_Window(QMainWindow):
         self.closed.emit()
         super().closeEvent(event)
 
-
-
 #"""Ошибки"""
 class Show_Error(QObject):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.error = QMessageBox()
-        self.error.setWindowTitle("Упс!")
+        self.error.setWindowTitle("Упс! Что-то пошло не так!")
         self.style = QtWidgets.QApplication.style()
         self.icon = self.style.standardIcon(QtWidgets.QStyle.SP_MessageBoxWarning)
         self.error.setWindowIcon(self.icon)
@@ -2991,6 +3034,8 @@ class Show_Error(QObject):
                     "2. Настройки подключения\n"
                     "3. Работает ли PostgreSQL на сервере"
                 )
+        elif isinstance (e, errors.NumericValueOutOfRange):
+            self.error.setText("Год выпуска может состоять только из 4-ех цифр")
         else:
             self.error.setText("Что-то пошло не так")
             self.error.setDetailedText(f'Error: {e}')
