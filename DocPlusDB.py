@@ -59,7 +59,7 @@ db_name = config["db_name"]
 port = config["port"]
 
 # Версия
-current_version = "2.4.1"
+current_version = "2.4.2"
 # Права админа
 admin = None
 
@@ -491,6 +491,8 @@ class Main_Window(QMainWindow):
 
         #"""Таблица"""
         self.table = QtWidgets.QTableWidget(self.search_groupe)
+        self.table.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
+        self.table.customContextMenuRequested.connect(self.show_copy_menu)
         self.table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
         self.table.itemDoubleClicked.connect(lambda: self.equipment_show(self.table, itemDoubleClicked=True))
 
@@ -679,6 +681,8 @@ class Main_Window(QMainWindow):
 
         #"""Таблица ремонтов"""
         self.table_repair = QtWidgets.QTableWidget(self.tab_repairs)
+        self.table_repair.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
+        self.table_repair.customContextMenuRequested.connect(self.show_copy_menu)
         self.table_repair.setMinimumHeight(150)
 
         #"""Таймнер для таблицы поиска ремонтв"""
@@ -859,6 +863,7 @@ class Main_Window(QMainWindow):
                                    self.resize_timer_repair, self.btn_save_repair, self.status_row_colors)
         self.more_filters_visible(self.search_for_what, self.btn_more_filters, self.more_filters)
         self.more_filters_visible(self.search_for_what_repair, self.btn_more_filters_repair, self.more_filters_repair)
+
 
     #"""Настройка добавления оборудования"""
 
@@ -1434,6 +1439,24 @@ class Main_Window(QMainWindow):
             i += 1
         wb.save(name)
 
+    def show_copy_menu(self, pos):
+        item = self.table.itemAt(pos)
+        if not item:
+            return
+
+        menu = QtWidgets.QMenu()
+        copy_action = menu.addAction("Копировать")
+        copy_action.triggered.connect(self.copy)
+        menu.exec_(self.table.viewport().mapToGlobal(pos))
+
+    #"""Копирование ячейки"""
+    def copy(self):
+        item = self.table.currentItem()
+
+        if item:
+            QtWidgets.QApplication.clipboard().setText(item.text())
+            print(f"Ячейка: {item.text()}")
+
     #"""Таймер Для Пересчета Таблиц"""
     def start_resize_timer(self, resize_timer):
         resize_timer.start(1)
@@ -1765,6 +1788,7 @@ class Equipment_Window(QMainWindow):
         self.layout.addWidget(self.lable_address, 0, 0)
         self.lable_address.setFixedHeight(15)
         self.address_text = QtWidgets.QLabel(self.centralwidget)
+        self.address_text.setTextInteractionFlags(QtCore.Qt.TextSelectableByMouse)
         self.address = QtWidgets.QComboBox(self.centralwidget)
         self.address_stack = QtWidgets.QStackedLayout()
         self.address_stack.addWidget(self.address_text)
@@ -1777,6 +1801,7 @@ class Equipment_Window(QMainWindow):
         self.layout.addWidget(self.lable_room, 2, 0)
         self.lable_room.setFixedHeight(15)
         self.room_text = QtWidgets.QLabel(self.centralwidget)
+        self.room_text.setTextInteractionFlags(QtCore.Qt.TextSelectableByMouse)
         self.room = QtWidgets.QComboBox(self.centralwidget)
         self.room_stack = QtWidgets.QStackedLayout()
         self.room_stack.addWidget(self.room_text)
@@ -1788,6 +1813,7 @@ class Equipment_Window(QMainWindow):
         self.layout.addWidget(self.lable_type, 4, 0)
         self.lable_type.setFixedHeight(15)
         self.type_text = QtWidgets.QLabel(self.centralwidget)
+        self.type_text.setTextInteractionFlags(QtCore.Qt.TextSelectableByMouse)
         self.type = QtWidgets.QComboBox(self.centralwidget)
         self.type_stack = QtWidgets.QStackedLayout()
         self.type_stack.addWidget(self.type_text)
@@ -1798,6 +1824,7 @@ class Equipment_Window(QMainWindow):
         self.lable_status.setText("Статус:")
         self.layout.addWidget(self.lable_status, 6, 0)
         self.status_text = QtWidgets.QLabel(self.centralwidget)
+        self.status_text.setTextInteractionFlags(QtCore.Qt.TextSelectableByMouse)
         self.status = QtWidgets.QComboBox(self.centralwidget)
         self.status_stack = QtWidgets.QStackedLayout()
         self.status_stack.addWidget(self.status_text)
@@ -1809,6 +1836,7 @@ class Equipment_Window(QMainWindow):
         self.layout.addWidget(self.lable_name, 0, 1)
         self.name_text = QtWidgets.QLabel(self.centralwidget)
         self.name_text.setMinimumWidth(250)
+        self.name_text.setTextInteractionFlags(QtCore.Qt.TextSelectableByMouse)
         self.name = QtWidgets.QLineEdit(self.centralwidget)
         self.name.setMinimumWidth(250)
         self.name_stack = QtWidgets.QStackedLayout()
@@ -1820,6 +1848,7 @@ class Equipment_Window(QMainWindow):
         self.lable_sn.setText("Серийный номер:")
         self.layout.addWidget(self.lable_sn, 2, 1)
         self.sn_text = QtWidgets.QLabel(self.centralwidget)
+        self.sn_text.setTextInteractionFlags(QtCore.Qt.TextSelectableByMouse)
         self.sn = QtWidgets.QLineEdit(self.centralwidget)
         self.sn_stack = QtWidgets.QStackedLayout()
         self.sn_stack.addWidget(self.sn_text)
@@ -1830,6 +1859,7 @@ class Equipment_Window(QMainWindow):
         self.lable_date.setText("Год выпуска:")
         self.layout.addWidget(self.lable_date, 4, 1)
         self.date_text = QtWidgets.QLabel(self.centralwidget)
+        self.date_text.setTextInteractionFlags(QtCore.Qt.TextSelectableByMouse)
         self.date = QtWidgets.QLineEdit(self.centralwidget)
         self.date_stack = QtWidgets.QStackedLayout()
         self.date_stack.addWidget(self.date_text)
@@ -1840,6 +1870,7 @@ class Equipment_Window(QMainWindow):
         self.lable_ru.setText("Рег. Удостоверение:")
         self.layout.addWidget(self.lable_ru, 6, 1)
         self.ru_text = QtWidgets.QLabel(self.centralwidget)
+        self.ru_text.setTextInteractionFlags(QtCore.Qt.TextSelectableByMouse)
         self.ru = QtWidgets.QLineEdit(self.centralwidget)
         self.ru_stack = QtWidgets.QStackedLayout()
         self.ru_stack.addWidget(self.ru_text)
@@ -2484,6 +2515,8 @@ class Entry_Window(QMainWindow):
         # """Для ошибок"""
         self.show_error = Show_Error()
 
+        self.repair_id = None
+
         self.layout = QGridLayout(self.centralwidget)
         self.lable_fault = QtWidgets.QLabel(self.centralwidget)
         self.lable_fault.setText("Ошибка:")
@@ -2534,6 +2567,10 @@ class Entry_Window(QMainWindow):
         self.add_date.setChecked(True)
         self.layout.addWidget(self.add_date, 10, 0)
 
+        self.add_number = QCheckBox("Добавить номер в акт?")
+        self.add_number.setChecked(True)
+        self.layout.addWidget(self.add_number, 10, 1)
+
         self.btn_cancel = QtWidgets.QPushButton(self.centralwidget)
         self.btn_cancel.setText("Отмена")
         self.btn_cancel.clicked.connect(self.cancel)
@@ -2573,6 +2610,7 @@ class Entry_Window(QMainWindow):
                     (index,)
                 )
                 self.name = cur.fetchone()[0]
+
                 # print(name)
                 self.setWindowTitle(f'Добавить запись к "{self.name}"')
 
@@ -2744,10 +2782,11 @@ class Entry_Window(QMainWindow):
                             INSERT INTO repairs ( 
                             id, fault, repair, date, status_id, equipments_id, repairman, types_of_repairs_id) 
                             VALUES (DEFAULT, %s, %s, %s, %s, %s, %s, %s)
+                            RETURNING id
                             """,
                             (self.fault.text(), self.repair.text(), self.date.text(), self.id_status, index, self.repairman.text(), self.id_type_of_repair)
                         )
-
+                        self.repair_id = cur.fetchone()[0]
                     #"""Добавление в оборудование"""
 
                     cur.execute(
@@ -2899,6 +2938,10 @@ class Entry_Window(QMainWindow):
 
 
                     #Инфа
+                    if self.repair_id and self.add_number.isChecked():
+                        self.can.drawString(399, 689, self.repair_id)
+                    # else:
+                    #     self.can.drawString(399, 689, "123")
                     self.can.drawString(120, 518, self.type)  # Координаты (x, y)
                     self.can.drawString(120, 505, self.name)
                     self.can.drawString(120, 492, self.sn)
@@ -2955,7 +2998,7 @@ class Entry_Window(QMainWindow):
                     self.can.setFont('Times', 12)
 
                     draw_wrapped_text(self.can, self.fault.text(), 40, 425, 90, 13)
-                    draw_wrapped_text(self.can, self.repair.text(), 40, 384, 90, 13)
+                    draw_wrapped_text(self.can, self.repair.text(), 40, 370, 90, 13)
 
                     self.can.save()
 
