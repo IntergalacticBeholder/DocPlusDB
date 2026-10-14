@@ -59,7 +59,7 @@ db_name = config["db_name"]
 port = config["port"]
 
 # Версия
-current_version = "2.4.3"
+current_version = "2.4.4"
 # Права админа
 admin = None
 
