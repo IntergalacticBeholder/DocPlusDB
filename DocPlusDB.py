@@ -59,7 +59,7 @@ db_name = config["db_name"]
 port = config["port"]
 
 # Версия
-current_version = "2.4.2"
+current_version = "2.4.3"
 # Права админа
 admin = None
 
@@ -981,7 +981,7 @@ class Main_Window(QMainWindow):
                     """
                 else:
                     query = f"""
-                        SELECT equipments.id, repairs.date, streets.street, address.room, types.type, 
+                        SELECT repairs.id, repairs.date, streets.street, address.room, types.type, 
                                 names.name, names.sn, names.date, repairs.fault, repairs.repair, 
                                 types_of_repairs.type_of_repair, status.status, repairs.repairman 
                         FROM repairs 
@@ -1439,6 +1439,7 @@ class Main_Window(QMainWindow):
             i += 1
         wb.save(name)
 
+    #"""Меню Копирования"""
     def show_copy_menu(self, pos):
         item = self.table.itemAt(pos)
         if not item:
@@ -2768,6 +2769,7 @@ class Entry_Window(QMainWindow):
                             INSERT INTO repairs ( 
                             id, fault, repair, date, status_id, equipments_id, repairman, types_of_repairs_id) 
                             VALUES (DEFAULT, %s, %s, %s, %s, %s, %s, %s)
+                            RETURNING id
                             """,
                             (self.fault.text(), self.repair.text(), self.date.text(), self.id_status, index, self.repairman.text(), self.id_type_of_repair)
                         )
@@ -2786,7 +2788,9 @@ class Entry_Window(QMainWindow):
                             """,
                             (self.fault.text(), self.repair.text(), self.date.text(), self.id_status, index, self.repairman.text(), self.id_type_of_repair)
                         )
-                        self.repair_id = cur.fetchone()[0]
+
+                    self.repair_id = cur.fetchone()[0]
+                    print(self.repair_id)
                     #"""Добавление в оборудование"""
 
                     cur.execute(
@@ -2939,7 +2943,7 @@ class Entry_Window(QMainWindow):
 
                     #Инфа
                     if self.repair_id and self.add_number.isChecked():
-                        self.can.drawString(399, 689, self.repair_id)
+                        self.can.drawString(399, 689, str(self.repair_id))
                     # else:
                     #     self.can.drawString(399, 689, "123")
                     self.can.drawString(120, 518, self.type)  # Координаты (x, y)
